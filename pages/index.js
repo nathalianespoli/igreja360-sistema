@@ -13,12 +13,12 @@ import { Users, DollarSign, Calendar, BarChart3, Plus, Search, Menu, X, Heart, P
 // ==========================================
 // SUBSTITUA com suas credenciais do Firebase (veja tutorial)
 const firebaseConfig = {
-  apiKey: "SUA_API_KEY_AQUI",
-  authDomain: "SEU_PROJETO.firebaseapp.com",
-  projectId: "SEU_PROJETO_ID",
-  storageBucket: "SEU_PROJETO.appspot.com",
-  messagingSenderId: "SEU_MESSAGING_ID",
-  appId: "SEU_APP_ID"
+  apiKey: "AIzaSyByDEDzi_PH7Azlzr20j5HDRKyF4miCFdU",
+  authDomain: "igreja360-sistema.firebaseapp.com",
+  projectId: "igreja360-sistema",
+  storageBucket: "igreja360-sistema.firebasestorage.app",
+  messagingSenderId: "993807884811",
+  appId: "1:993807884811:web:9710d1119853a178d45d0e"
 };
 
 // ==========================================
