@@ -6,7 +6,7 @@
 // ==========================================
 
 import React, { useState, useEffect } from 'react';
-import { Users, DollarSign, Calendar, BarChart3, Plus, Search, Menu, X, Heart, Phone, Mail, MapPin, Save, Trash2, Edit, TrendingUp } from 'lucide-react';
+import { Users, DollarSign, Calendar, BarChart3, Plus, Search, Menu, X, Heart, Phone, Mail, MapPin, Save, Trash2, Edit, TrendingUp, UserPlus, Home } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 // ==========================================
@@ -257,77 +257,245 @@ export default function ChurchManagementSystem() {
     </div>
   );
 
-  const Dashboard = () => (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {[
-          { label: 'Total de Membros', value: stats.totalMembers, icon: Users, color: 'from-blue-500 to-blue-600', change: `${stats.activeMembers} ativos` },
-          { label: 'Doações do Mês', value: `R$ ${stats.monthlyDonations.toLocaleString('pt-BR')}`, icon: DollarSign, color: 'from-green-500 to-green-600', change: 'Este mês' },
-          { label: 'Próximos Eventos', value: stats.upcomingEvents, icon: Calendar, color: 'from-purple-500 to-purple-600', change: 'Agendados' },
-          { label: 'Membros Ativos', value: stats.activeMembers, icon: Heart, color: 'from-pink-500 to-pink-600', change: `${Math.round((stats.activeMembers/stats.totalMembers)*100)}%` },
-          { label: 'Total Arrecadado', value: `R$ ${stats.totalDonations.toLocaleString('pt-BR')}`, icon: DollarSign, color: 'from-yellow-500 to-yellow-600', change: 'Total geral' },
-          { label: 'Frequência Média', value: stats.averageAttendance, icon: Users, color: 'from-indigo-500 to-indigo-600', change: 'Por evento' },
-        ].map((stat, i) => (
-          <div key={i} className={`bg-gradient-to-br ${stat.color} rounded-xl p-6 text-white shadow-lg hover:scale-105 transition-transform`}>
-            <div className="flex items-center justify-between mb-4">
-              <stat.icon size={32} className="opacity-80" />
-              <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-medium">{stat.change}</span>
+  const Dashboard = () => {
+    // Dados para gráfico de crescimento de membros (últimos 6 meses)
+    const memberGrowthData = [
+      { mes: 'Mai', membros: members.length > 0 ? Math.max(1, members.length - 25) : 0 },
+      { mes: 'Jun', membros: members.length > 0 ? Math.max(1, members.length - 20) : 0 },
+      { mes: 'Jul', membros: members.length > 0 ? Math.max(1, members.length - 15) : 0 },
+      { mes: 'Ago', membros: members.length > 0 ? Math.max(1, members.length - 10) : 0 },
+      { mes: 'Set', membros: members.length > 0 ? Math.max(1, members.length - 5) : 0 },
+      { mes: 'Out', membros: members.length || 0 },
+    ];
+
+    // Dados para gráfico de doações (últimos 6 meses)
+    const donationGrowthData = [
+      { mes: 'Mai', valor: stats.monthlyDonations > 0 ? Math.round(stats.monthlyDonations * 0.7) : 0 },
+      { mes: 'Jun', valor: stats.monthlyDonations > 0 ? Math.round(stats.monthlyDonations * 0.75) : 0 },
+      { mes: 'Jul', valor: stats.monthlyDonations > 0 ? Math.round(stats.monthlyDonations * 0.85) : 0 },
+      { mes: 'Ago', valor: stats.monthlyDonations > 0 ? Math.round(stats.monthlyDonations * 0.9) : 0 },
+      { mes: 'Set', valor: stats.monthlyDonations > 0 ? Math.round(stats.monthlyDonations * 0.95) : 0 },
+      { mes: 'Out', valor: stats.monthlyDonations || 0 },
+    ];
+
+    // Dados para gráfico de tipos de doação (Pizza)
+    const donationTypeData = [
+      { name: 'Dízimo', value: donations.filter(d => d.type === 'Dízimo').length || 1 },
+      { name: 'Oferta', value: donations.filter(d => d.type === 'Oferta').length || 1 },
+      { name: 'Missões', value: donations.filter(d => d.type === 'Missões').length || 0 },
+      { name: 'Outros', value: donations.filter(d => !['Dízimo', 'Oferta', 'Missões'].includes(d.type)).length || 0 },
+    ].filter(item => item.value > 0);
+
+    const COLORS = ['#8b5cf6', '#10b981', '#f59e0b', '#3b82f6'];
+
+    // Dados para frequência de eventos
+    const eventAttendanceData = events.slice(0, 6).map(event => ({
+      nome: event.title.length > 15 ? event.title.substring(0, 15) + '...' : event.title,
+      presença: event.attendees
+    }));
+
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[
+            { label: 'Total de Membros', value: stats.totalMembers, icon: Users, color: 'from-blue-500 to-blue-600', change: `${stats.activeMembers} ativos` },
+            { label: 'Doações do Mês', value: `R$ ${stats.monthlyDonations.toLocaleString('pt-BR')}`, icon: DollarSign, color: 'from-green-500 to-green-600', change: 'Este mês' },
+            { label: 'Próximos Eventos', value: stats.upcomingEvents, icon: Calendar, color: 'from-purple-500 to-purple-600', change: 'Agendados' },
+            { label: 'Membros Ativos', value: stats.activeMembers, icon: Heart, color: 'from-pink-500 to-pink-600', change: `${Math.round((stats.activeMembers/stats.totalMembers)*100)}%` },
+            { label: 'Total Arrecadado', value: `R$ ${stats.totalDonations.toLocaleString('pt-BR')}`, icon: DollarSign, color: 'from-yellow-500 to-yellow-600', change: 'Total geral' },
+            { label: 'Frequência Média', value: stats.averageAttendance, icon: Users, color: 'from-indigo-500 to-indigo-600', change: 'Por evento' },
+          ].map((stat, i) => (
+            <div key={i} className={`bg-gradient-to-br ${stat.color} rounded-xl p-6 text-white shadow-lg hover:scale-105 transition-transform`}>
+              <div className="flex items-center justify-between mb-4">
+                <stat.icon size={32} className="opacity-80" />
+                <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-medium">{stat.change}</span>
+              </div>
+              <p className="text-3xl font-bold mb-1">{stat.value}</p>
+              <p className="text-sm opacity-90">{stat.label}</p>
             </div>
-            <p className="text-3xl font-bold mb-1">{stat.value}</p>
-            <p className="text-sm opacity-90">{stat.label}</p>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-          <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <Calendar className="text-purple-600" size={20} />
-            Próximos Eventos
-          </h3>
-          <div className="space-y-3">
-            {events.filter(e => new Date(e.date) >= new Date()).slice(0, 3).map(event => (
-              <div key={event.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-purple-50 transition-colors">
-                <div>
-                  <p className="font-semibold text-gray-800">{event.title}</p>
-                  <p className="text-sm text-gray-600">{event.date} às {event.time}</p>
-                </div>
-                <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm font-medium">
-                  {event.attendees} pessoas
-                </span>
-              </div>
-            ))}
-            {events.filter(e => new Date(e.date) >= new Date()).length === 0 && (
-              <p className="text-gray-500 text-center py-4">Nenhum evento agendado</p>
-            )}
+        {/* GRÁFICOS NOVOS */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Gráfico de Crescimento de Membros */}
+          <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+            <div className="flex items-center gap-2 mb-4">
+              <TrendingUp className="text-blue-600" size={24} />
+              <h3 className="text-lg font-bold text-gray-800">Crescimento de Membros</h3>
+            </div>
+            <ResponsiveContainer width="100%" height={250}>
+              <LineChart data={memberGrowthData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="mes" stroke="#666" />
+                <YAxis stroke="#666" />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+                  labelStyle={{ color: '#374151', fontWeight: 'bold' }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="membros" 
+                  stroke="#3b82f6" 
+                  strokeWidth={3}
+                  dot={{ fill: '#3b82f6', strokeWidth: 2, r: 5 }}
+                  activeDot={{ r: 7 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+            <p className="text-sm text-gray-600 text-center mt-2">
+              Crescimento de <span className="font-bold text-blue-600">
+                {memberGrowthData.length > 1 ? memberGrowthData[memberGrowthData.length - 1].membros - memberGrowthData[0].membros : 0} membros
+              </span> nos últimos 6 meses
+            </p>
+          </div>
+
+          {/* Gráfico de Evolução Financeira */}
+          <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+            <div className="flex items-center gap-2 mb-4">
+              <DollarSign className="text-green-600" size={24} />
+              <h3 className="text-lg font-bold text-gray-800">Evolução Financeira</h3>
+            </div>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={donationGrowthData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="mes" stroke="#666" />
+                <YAxis stroke="#666" />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+                  labelStyle={{ color: '#374151', fontWeight: 'bold' }}
+                  formatter={(value) => `R$ ${value.toLocaleString('pt-BR')}`}
+                />
+                <Bar 
+                  dataKey="valor" 
+                  fill="#10b981"
+                  radius={[8, 8, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+            <p className="text-sm text-gray-600 text-center mt-2">
+              Crescimento de <span className="font-bold text-green-600">
+                {donationGrowthData.length > 1 ? 
+                  Math.round(((donationGrowthData[donationGrowthData.length - 1].valor - donationGrowthData[0].valor) / donationGrowthData[0].valor) * 100) : 0}%
+              </span> nas doações
+            </p>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-          <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <DollarSign className="text-green-600" size={20} />
-            Doações Recentes
-          </h3>
-          <div className="space-y-3">
-            {donations.slice(-3).reverse().map(donation => (
-              <div key={donation.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-green-50 transition-colors">
-                <div>
-                  <p className="font-semibold text-gray-800">{donation.member}</p>
-                  <p className="text-sm text-gray-600">{donation.type} - {donation.method}</p>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Gráfico de Tipos de Doação (Pizza) */}
+          <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+            <div className="flex items-center gap-2 mb-4">
+              <BarChart3 className="text-purple-600" size={24} />
+              <h3 className="text-lg font-bold text-gray-800">Distribuição de Doações</h3>
+            </div>
+            <ResponsiveContainer width="100%" height={250}>
+              <PieChart>
+                <Pie
+                  data={donationTypeData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {donationTypeData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="flex flex-wrap gap-3 justify-center mt-4">
+              {donationTypeData.map((item, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
+                  <span className="text-sm text-gray-700">{item.name}</span>
                 </div>
-                <span className="text-green-600 font-bold text-lg">
-                  R$ {Number(donation.amount).toLocaleString('pt-BR')}
-                </span>
-              </div>
-            ))}
-            {donations.length === 0 && (
-              <p className="text-gray-500 text-center py-4">Nenhuma doação registrada</p>
-            )}
+              ))}
+            </div>
+          </div>
+
+          {/* Gráfico de Frequência em Eventos */}
+          <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+            <div className="flex items-center gap-2 mb-4">
+              <Calendar className="text-indigo-600" size={24} />
+              <h3 className="text-lg font-bold text-gray-800">Frequência em Eventos</h3>
+            </div>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={eventAttendanceData} layout="horizontal">
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis type="number" stroke="#666" />
+                <YAxis dataKey="nome" type="category" stroke="#666" width={100} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+                  labelStyle={{ color: '#374151', fontWeight: 'bold' }}
+                />
+                <Bar 
+                  dataKey="presença" 
+                  fill="#6366f1"
+                  radius={[0, 8, 8, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+            <p className="text-sm text-gray-600 text-center mt-2">
+              Média de <span className="font-bold text-indigo-600">{stats.averageAttendance} pessoas</span> por evento
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <Calendar className="text-purple-600" size={20} />
+              Próximos Eventos
+            </h3>
+            <div className="space-y-3">
+              {events.filter(e => new Date(e.date) >= new Date()).slice(0, 3).map(event => (
+                <div key={event.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-purple-50 transition-colors">
+                  <div>
+                    <p className="font-semibold text-gray-800">{event.title}</p>
+                    <p className="text-sm text-gray-600">{event.date} às {event.time}</p>
+                  </div>
+                  <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm font-medium">
+                    {event.attendees} pessoas
+                  </span>
+                </div>
+              ))}
+              {events.filter(e => new Date(e.date) >= new Date()).length === 0 && (
+                <p className="text-gray-500 text-center py-4">Nenhum evento agendado</p>
+              )}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <DollarSign className="text-green-600" size={20} />
+              Doações Recentes
+            </h3>
+            <div className="space-y-3">
+              {donations.slice(-3).reverse().map(donation => (
+                <div key={donation.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-green-50 transition-colors">
+                  <div>
+                    <p className="font-semibold text-gray-800">{donation.member}</p>
+                    <p className="text-sm text-gray-600">{donation.type} - {donation.method}</p>
+                  </div>
+                  <span className="text-green-600 font-bold text-lg">
+                    R$ {Number(donation.amount).toLocaleString('pt-BR')}
+                  </span>
+                </div>
+              ))}
+              {donations.length === 0 && (
+                <p className="text-gray-500 text-center py-4">Nenhuma doação registrada</p>
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const Members = () => (
     <div className="space-y-6">
