@@ -6,7 +6,8 @@
 // ==========================================
 
 import React, { useState, useEffect } from 'react';
-import { Users, DollarSign, Calendar, BarChart3, Plus, Search, Menu, X, Heart, Phone, Mail, MapPin, Save, Trash2, Edit } from 'lucide-react';
+import { Users, DollarSign, Calendar, BarChart3, Plus, Search, Menu, X, Heart, Phone, Mail, MapPin, Save, Trash2, Edit, TrendingUp } from 'lucide-react';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 // ==========================================
 // CONFIGURAÇÃO DO FIREBASE
