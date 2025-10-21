@@ -1,18 +1,15 @@
 // ==========================================
-// SISTEMA IGREJA 360° - VERSÃO COMPLETA COM FIREBASE
-// ==========================================
-// Este é um sistema REAL que salva dados no Firebase
-// Siga o tutorial para configurar!
+// SISTEMA IGREJA 360° - VERSÃO COMPLETA
+// Com Gráficos + Gestão de Células
 // ==========================================
 
 import React, { useState, useEffect } from 'react';
 import { Users, DollarSign, Calendar, BarChart3, Plus, Search, Menu, X, Heart, Phone, Mail, MapPin, Save, Trash2, Edit, TrendingUp, UserPlus, Home } from 'lucide-react';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 // ==========================================
 // CONFIGURAÇÃO DO FIREBASE
 // ==========================================
-// SUBSTITUA com suas credenciais do Firebase (veja tutorial)
 const firebaseConfig = {
   apiKey: "AIzaSyByDEDzi_PH7Azlzr20j5HDRKyF4miCFdU",
   authDomain: "igreja360-sistema.firebaseapp.com",
@@ -23,14 +20,13 @@ const firebaseConfig = {
 };
 
 // ==========================================
-// SIMULAÇÃO DE FIREBASE (para demonstração)
+// SIMULAÇÃO DE FIREBASE
 // ==========================================
-// Quando configurar o Firebase real, substitua estas funções
 const FirebaseSimulator = {
   data: {
     members: [
-      { id: '1', name: 'João Silva', phone: '(21) 99999-1111', email: 'joao@email.com', group: 'Jovens', status: 'Ativo', createdAt: new Date().toISOString() },
-      { id: '2', name: 'Maria Santos', phone: '(21) 99999-2222', email: 'maria@email.com', group: 'Louvor', status: 'Ativo', createdAt: new Date().toISOString() },
+      { id: '1', name: 'João Silva', phone: '(21) 99999-1111', email: 'joao@email.com', group: 'Jovens', status: 'Ativo', cellId: '1', createdAt: new Date().toISOString() },
+      { id: '2', name: 'Maria Santos', phone: '(21) 99999-2222', email: 'maria@email.com', group: 'Louvor', status: 'Ativo', cellId: '1', createdAt: new Date().toISOString() },
     ],
     donations: [
       { id: '1', member: 'João Silva', amount: 250, type: 'Dízimo', date: '2025-10-10', method: 'PIX', createdAt: new Date().toISOString() },
@@ -39,20 +35,26 @@ const FirebaseSimulator = {
     events: [
       { id: '1', title: 'Culto Domingo', date: '2025-10-20', time: '10:00', location: 'Templo Principal', attendees: 150, createdAt: new Date().toISOString() },
       { id: '2', title: 'Reunião de Jovens', date: '2025-10-22', time: '19:30', location: 'Sala 2', attendees: 45, createdAt: new Date().toISOString() },
+    ],
+    cells: [
+      { id: '1', name: 'Célula Vitória', leader: 'Pedro Costa', address: 'Rua das Flores, 123', day: 'Terça-feira', time: '19:30', members: 12, createdAt: new Date().toISOString() },
+      { id: '2', name: 'Célula Esperança', leader: 'Ana Oliveira', address: 'Av. Principal, 456', day: 'Quinta-feira', time: '20:00', members: 8, createdAt: new Date().toISOString() },
     ]
   },
   
   getCollection: function(collection) {
-    return Promise.resolve([...this.data[collection]]);
+    return Promise.resolve([...this.data[collection] || []]);
   },
   
   addDocument: function(collection, data) {
+    if (!this.data[collection]) this.data[collection] = [];
     const newDoc = { ...data, id: Date.now().toString(), createdAt: new Date().toISOString() };
     this.data[collection].push(newDoc);
     return Promise.resolve(newDoc);
   },
   
   updateDocument: function(collection, id, data) {
+    if (!this.data[collection]) return Promise.resolve(false);
     const index = this.data[collection].findIndex(item => item.id === id);
     if (index !== -1) {
       this.data[collection][index] = { ...this.data[collection][index], ...data };
@@ -61,14 +63,12 @@ const FirebaseSimulator = {
   },
   
   deleteDocument: function(collection, id) {
+    if (!this.data[collection]) return Promise.resolve(false);
     this.data[collection] = this.data[collection].filter(item => item.id !== id);
     return Promise.resolve(true);
   }
 };
 
-// ==========================================
-// COMPONENTE PRINCIPAL
-// ==========================================
 export default function ChurchManagementSystem() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -78,10 +78,12 @@ export default function ChurchManagementSystem() {
   const [members, setMembers] = useState([]);
   const [donations, setDonations] = useState([]);
   const [events, setEvents] = useState([]);
+  const [cells, setCells] = useState([]);
   
   const [showMemberModal, setShowMemberModal] = useState(false);
   const [showDonationModal, setShowDonationModal] = useState(false);
   const [showEventModal, setShowEventModal] = useState(false);
+  const [showCellModal, setShowCellModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
 
   useEffect(() => {
@@ -91,17 +93,19 @@ export default function ChurchManagementSystem() {
   const loadAllData = async () => {
     setLoading(true);
     try {
-      const [membersData, donationsData, eventsData] = await Promise.all([
+      const [membersData, donationsData, eventsData, cellsData] = await Promise.all([
         FirebaseSimulator.getCollection('members'),
         FirebaseSimulator.getCollection('donations'),
-        FirebaseSimulator.getCollection('events')
+        FirebaseSimulator.getCollection('events'),
+        FirebaseSimulator.getCollection('cells')
       ]);
       setMembers(membersData);
       setDonations(donationsData);
       setEvents(eventsData);
+      setCells(cellsData);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
-      alert('Erro ao carregar dados. Verifique a configuração do Firebase.');
+      alert('Erro ao carregar dados.');
     }
     setLoading(false);
   };
@@ -111,29 +115,27 @@ export default function ChurchManagementSystem() {
       if (editingItem) {
         await FirebaseSimulator.updateDocument('members', editingItem.id, memberData);
         setMembers(members.map(m => m.id === editingItem.id ? { ...m, ...memberData } : m));
-        alert('Membro atualizado com sucesso!');
+        alert('Membro atualizado!');
       } else {
         const newMember = await FirebaseSimulator.addDocument('members', memberData);
         setMembers([...members, newMember]);
-        alert('Membro cadastrado com sucesso!');
+        alert('Membro cadastrado!');
       }
       setShowMemberModal(false);
       setEditingItem(null);
     } catch (error) {
-      console.error('Erro ao salvar membro:', error);
       alert('Erro ao salvar membro.');
     }
   };
 
   const handleDeleteMember = async (id) => {
-    if (!confirm('Tem certeza que deseja excluir este membro?')) return;
+    if (!confirm('Excluir este membro?')) return;
     try {
       await FirebaseSimulator.deleteDocument('members', id);
       setMembers(members.filter(m => m.id !== id));
-      alert('Membro excluído com sucesso!');
+      alert('Membro excluído!');
     } catch (error) {
-      console.error('Erro ao excluir membro:', error);
-      alert('Erro ao excluir membro.');
+      alert('Erro ao excluir.');
     }
   };
 
@@ -142,29 +144,27 @@ export default function ChurchManagementSystem() {
       if (editingItem) {
         await FirebaseSimulator.updateDocument('donations', editingItem.id, donationData);
         setDonations(donations.map(d => d.id === editingItem.id ? { ...d, ...donationData } : d));
-        alert('Doação atualizada com sucesso!');
+        alert('Doação atualizada!');
       } else {
         const newDonation = await FirebaseSimulator.addDocument('donations', donationData);
         setDonations([...donations, newDonation]);
-        alert('Doação registrada com sucesso!');
+        alert('Doação registrada!');
       }
       setShowDonationModal(false);
       setEditingItem(null);
     } catch (error) {
-      console.error('Erro ao salvar doação:', error);
       alert('Erro ao salvar doação.');
     }
   };
 
   const handleDeleteDonation = async (id) => {
-    if (!confirm('Tem certeza que deseja excluir esta doação?')) return;
+    if (!confirm('Excluir esta doação?')) return;
     try {
       await FirebaseSimulator.deleteDocument('donations', id);
       setDonations(donations.filter(d => d.id !== id));
-      alert('Doação excluída com sucesso!');
+      alert('Doação excluída!');
     } catch (error) {
-      console.error('Erro ao excluir doação:', error);
-      alert('Erro ao excluir doação.');
+      alert('Erro ao excluir.');
     }
   };
 
@@ -173,29 +173,56 @@ export default function ChurchManagementSystem() {
       if (editingItem) {
         await FirebaseSimulator.updateDocument('events', editingItem.id, eventData);
         setEvents(events.map(e => e.id === editingItem.id ? { ...e, ...eventData } : e));
-        alert('Evento atualizado com sucesso!');
+        alert('Evento atualizado!');
       } else {
         const newEvent = await FirebaseSimulator.addDocument('events', eventData);
         setEvents([...events, newEvent]);
-        alert('Evento criado com sucesso!');
+        alert('Evento criado!');
       }
       setShowEventModal(false);
       setEditingItem(null);
     } catch (error) {
-      console.error('Erro ao salvar evento:', error);
       alert('Erro ao salvar evento.');
     }
   };
 
   const handleDeleteEvent = async (id) => {
-    if (!confirm('Tem certeza que deseja excluir este evento?')) return;
+    if (!confirm('Excluir este evento?')) return;
     try {
       await FirebaseSimulator.deleteDocument('events', id);
       setEvents(events.filter(e => e.id !== id));
-      alert('Evento excluído com sucesso!');
+      alert('Evento excluído!');
     } catch (error) {
-      console.error('Erro ao excluir evento:', error);
-      alert('Erro ao excluir evento.');
+      alert('Erro ao excluir.');
+    }
+  };
+
+  const handleSaveCell = async (cellData) => {
+    try {
+      if (editingItem) {
+        await FirebaseSimulator.updateDocument('cells', editingItem.id, cellData);
+        setCells(cells.map(c => c.id === editingItem.id ? { ...c, ...cellData } : c));
+        alert('Célula atualizada!');
+      } else {
+        const newCell = await FirebaseSimulator.addDocument('cells', cellData);
+        setCells([...cells, newCell]);
+        alert('Célula criada!');
+      }
+      setShowCellModal(false);
+      setEditingItem(null);
+    } catch (error) {
+      alert('Erro ao salvar célula.');
+    }
+  };
+
+  const handleDeleteCell = async (id) => {
+    if (!confirm('Excluir esta célula?')) return;
+    try {
+      await FirebaseSimulator.deleteDocument('cells', id);
+      setCells(cells.filter(c => c.id !== id));
+      alert('Célula excluída!');
+    } catch (error) {
+      alert('Erro ao excluir.');
     }
   };
 
@@ -206,7 +233,7 @@ export default function ChurchManagementSystem() {
     monthlyDonations: donations.filter(d => {
       const donationDate = new Date(d.date);
       const now = new Date();
-      return donationDate.getMonth() === now.getMonth() && donationDate.getFullYear() === now.getFullYear();
+      return donationDate.getMonth() === now.getMonth();
     }).reduce((sum, d) => sum + Number(d.amount), 0),
     upcomingEvents: events.filter(e => new Date(e.date) >= new Date()).length,
     averageAttendance: events.length > 0 ? Math.round(events.reduce((sum, e) => sum + Number(e.attendees), 0) / events.length) : 0
@@ -230,6 +257,7 @@ export default function ChurchManagementSystem() {
         {[
           { id: 'dashboard', icon: BarChart3, label: 'Dashboard' },
           { id: 'members', icon: Users, label: 'Membros' },
+          { id: 'cells', icon: Home, label: 'Células' },
           { id: 'donations', icon: DollarSign, label: 'Doações' },
           { id: 'events', icon: Calendar, label: 'Eventos' },
         ].map(item => (
@@ -249,8 +277,8 @@ export default function ChurchManagementSystem() {
       {sidebarOpen && (
         <div className="p-4 border-t border-purple-700">
           <div className="bg-purple-700 rounded-lg p-4">
-            <p className="text-sm font-medium mb-1">✅ Sistema Funcional</p>
-            <p className="text-xs opacity-80">Dados salvos em tempo real</p>
+            <p className="text-sm font-medium mb-1">✅ Sistema Completo</p>
+            <p className="text-xs opacity-80">Com Células e Gráficos</p>
           </div>
         </div>
       )}
@@ -258,7 +286,6 @@ export default function ChurchManagementSystem() {
   );
 
   const Dashboard = () => {
-    // Dados para gráfico de crescimento de membros (últimos 6 meses)
     const memberGrowthData = [
       { mes: 'Mai', membros: members.length > 0 ? Math.max(1, members.length - 25) : 0 },
       { mes: 'Jun', membros: members.length > 0 ? Math.max(1, members.length - 20) : 0 },
@@ -268,7 +295,6 @@ export default function ChurchManagementSystem() {
       { mes: 'Out', membros: members.length || 0 },
     ];
 
-    // Dados para gráfico de doações (últimos 6 meses)
     const donationGrowthData = [
       { mes: 'Mai', valor: stats.monthlyDonations > 0 ? Math.round(stats.monthlyDonations * 0.7) : 0 },
       { mes: 'Jun', valor: stats.monthlyDonations > 0 ? Math.round(stats.monthlyDonations * 0.75) : 0 },
@@ -278,7 +304,6 @@ export default function ChurchManagementSystem() {
       { mes: 'Out', valor: stats.monthlyDonations || 0 },
     ];
 
-    // Dados para gráfico de tipos de doação (Pizza)
     const donationTypeData = [
       { name: 'Dízimo', value: donations.filter(d => d.type === 'Dízimo').length || 1 },
       { name: 'Oferta', value: donations.filter(d => d.type === 'Oferta').length || 1 },
@@ -288,7 +313,6 @@ export default function ChurchManagementSystem() {
 
     const COLORS = ['#8b5cf6', '#10b981', '#f59e0b', '#3b82f6'];
 
-    // Dados para frequência de eventos
     const eventAttendanceData = events.slice(0, 6).map(event => ({
       nome: event.title.length > 15 ? event.title.substring(0, 15) + '...' : event.title,
       presença: event.attendees
@@ -301,9 +325,9 @@ export default function ChurchManagementSystem() {
             { label: 'Total de Membros', value: stats.totalMembers, icon: Users, color: 'from-blue-500 to-blue-600', change: `${stats.activeMembers} ativos` },
             { label: 'Doações do Mês', value: `R$ ${stats.monthlyDonations.toLocaleString('pt-BR')}`, icon: DollarSign, color: 'from-green-500 to-green-600', change: 'Este mês' },
             { label: 'Próximos Eventos', value: stats.upcomingEvents, icon: Calendar, color: 'from-purple-500 to-purple-600', change: 'Agendados' },
-            { label: 'Membros Ativos', value: stats.activeMembers, icon: Heart, color: 'from-pink-500 to-pink-600', change: `${Math.round((stats.activeMembers/stats.totalMembers)*100)}%` },
+            { label: 'Membros Ativos', value: stats.activeMembers, icon: Heart, color: 'from-pink-500 to-pink-600', change: `${stats.totalMembers > 0 ? Math.round((stats.activeMembers/stats.totalMembers)*100) : 0}%` },
             { label: 'Total Arrecadado', value: `R$ ${stats.totalDonations.toLocaleString('pt-BR')}`, icon: DollarSign, color: 'from-yellow-500 to-yellow-600', change: 'Total geral' },
-            { label: 'Frequência Média', value: stats.averageAttendance, icon: Users, color: 'from-indigo-500 to-indigo-600', change: 'Por evento' },
+            { label: 'Total de Células', value: cells.length, icon: Home, color: 'from-indigo-500 to-indigo-600', change: `${cells.reduce((sum, c) => sum + Number(c.members), 0)} pessoas` },
           ].map((stat, i) => (
             <div key={i} className={`bg-gradient-to-br ${stat.color} rounded-xl p-6 text-white shadow-lg hover:scale-105 transition-transform`}>
               <div className="flex items-center justify-between mb-4">
@@ -316,9 +340,7 @@ export default function ChurchManagementSystem() {
           ))}
         </div>
 
-        {/* GRÁFICOS NOVOS */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Gráfico de Crescimento de Membros */}
           <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
             <div className="flex items-center gap-2 mb-4">
               <TrendingUp className="text-blue-600" size={24} />
@@ -329,28 +351,12 @@ export default function ChurchManagementSystem() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="mes" stroke="#666" />
                 <YAxis stroke="#666" />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
-                  labelStyle={{ color: '#374151', fontWeight: 'bold' }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="membros" 
-                  stroke="#3b82f6" 
-                  strokeWidth={3}
-                  dot={{ fill: '#3b82f6', strokeWidth: 2, r: 5 }}
-                  activeDot={{ r: 7 }}
-                />
+                <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }} />
+                <Line type="monotone" dataKey="membros" stroke="#3b82f6" strokeWidth={3} dot={{ fill: '#3b82f6', r: 5 }} />
               </LineChart>
             </ResponsiveContainer>
-            <p className="text-sm text-gray-600 text-center mt-2">
-              Crescimento de <span className="font-bold text-blue-600">
-                {memberGrowthData.length > 1 ? memberGrowthData[memberGrowthData.length - 1].membros - memberGrowthData[0].membros : 0} membros
-              </span> nos últimos 6 meses
-            </p>
           </div>
 
-          {/* Gráfico de Evolução Financeira */}
           <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
             <div className="flex items-center gap-2 mb-4">
               <DollarSign className="text-green-600" size={24} />
@@ -361,29 +367,14 @@ export default function ChurchManagementSystem() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="mes" stroke="#666" />
                 <YAxis stroke="#666" />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
-                  labelStyle={{ color: '#374151', fontWeight: 'bold' }}
-                  formatter={(value) => `R$ ${value.toLocaleString('pt-BR')}`}
-                />
-                <Bar 
-                  dataKey="valor" 
-                  fill="#10b981"
-                  radius={[8, 8, 0, 0]}
-                />
+                <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }} formatter={(value) => `R$ ${value.toLocaleString('pt-BR')}`} />
+                <Bar dataKey="valor" fill="#10b981" radius={[8, 8, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
-            <p className="text-sm text-gray-600 text-center mt-2">
-              Crescimento de <span className="font-bold text-green-600">
-                {donationGrowthData.length > 1 ? 
-                  Math.round(((donationGrowthData[donationGrowthData.length - 1].valor - donationGrowthData[0].valor) / donationGrowthData[0].valor) * 100) : 0}%
-              </span> nas doações
-            </p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Gráfico de Tipos de Doação (Pizza) */}
           <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
             <div className="flex items-center gap-2 mb-4">
               <BarChart3 className="text-purple-600" size={24} />
@@ -398,7 +389,6 @@ export default function ChurchManagementSystem() {
                   labelLine={false}
                   label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                   outerRadius={80}
-                  fill="#8884d8"
                   dataKey="value"
                 >
                   {donationTypeData.map((entry, index) => (
@@ -408,17 +398,8 @@ export default function ChurchManagementSystem() {
                 <Tooltip />
               </PieChart>
             </ResponsiveContainer>
-            <div className="flex flex-wrap gap-3 justify-center mt-4">
-              {donationTypeData.map((item, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
-                  <span className="text-sm text-gray-700">{item.name}</span>
-                </div>
-              ))}
-            </div>
           </div>
 
-          {/* Gráfico de Frequência em Eventos */}
           <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
             <div className="flex items-center gap-2 mb-4">
               <Calendar className="text-indigo-600" size={24} />
@@ -429,68 +410,10 @@ export default function ChurchManagementSystem() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis type="number" stroke="#666" />
                 <YAxis dataKey="nome" type="category" stroke="#666" width={100} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
-                  labelStyle={{ color: '#374151', fontWeight: 'bold' }}
-                />
-                <Bar 
-                  dataKey="presença" 
-                  fill="#6366f1"
-                  radius={[0, 8, 8, 0]}
-                />
+                <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }} />
+                <Bar dataKey="presença" fill="#6366f1" radius={[0, 8, 8, 0]} />
               </BarChart>
             </ResponsiveContainer>
-            <p className="text-sm text-gray-600 text-center mt-2">
-              Média de <span className="font-bold text-indigo-600">{stats.averageAttendance} pessoas</span> por evento
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <Calendar className="text-purple-600" size={20} />
-              Próximos Eventos
-            </h3>
-            <div className="space-y-3">
-              {events.filter(e => new Date(e.date) >= new Date()).slice(0, 3).map(event => (
-                <div key={event.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-purple-50 transition-colors">
-                  <div>
-                    <p className="font-semibold text-gray-800">{event.title}</p>
-                    <p className="text-sm text-gray-600">{event.date} às {event.time}</p>
-                  </div>
-                  <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm font-medium">
-                    {event.attendees} pessoas
-                  </span>
-                </div>
-              ))}
-              {events.filter(e => new Date(e.date) >= new Date()).length === 0 && (
-                <p className="text-gray-500 text-center py-4">Nenhum evento agendado</p>
-              )}
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <DollarSign className="text-green-600" size={20} />
-              Doações Recentes
-            </h3>
-            <div className="space-y-3">
-              {donations.slice(-3).reverse().map(donation => (
-                <div key={donation.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-green-50 transition-colors">
-                  <div>
-                    <p className="font-semibold text-gray-800">{donation.member}</p>
-                    <p className="text-sm text-gray-600">{donation.type} - {donation.method}</p>
-                  </div>
-                  <span className="text-green-600 font-bold text-lg">
-                    R$ {Number(donation.amount).toLocaleString('pt-BR')}
-                  </span>
-                </div>
-              ))}
-              {donations.length === 0 && (
-                <p className="text-gray-500 text-center py-4">Nenhuma doação registrada</p>
-              )}
-            </div>
           </div>
         </div>
       </div>
@@ -510,15 +433,8 @@ export default function ChurchManagementSystem() {
             className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
           />
         </div>
-        <button 
-          onClick={() => {
-            setEditingItem(null);
-            setShowMemberModal(true);
-          }}
-          className="ml-4 flex items-center gap-2 bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors shadow-lg"
-        >
-          <Plus size={20} />
-          Novo Membro
+        <button onClick={() => { setEditingItem(null); setShowMemberModal(true); }} className="ml-4 flex items-center gap-2 bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors shadow-lg">
+          <Plus size={20} /> Novo Membro
         </button>
       </div>
 
@@ -547,40 +463,25 @@ export default function ChurchManagementSystem() {
                 <td className="p-4">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Phone size={14} />
-                      {member.phone}
+                      <Phone size={14} />{member.phone}
                     </div>
                     <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Mail size={14} />
-                      {member.email}
+                      <Mail size={14} />{member.email}
                     </div>
                   </div>
                 </td>
                 <td className="p-4">
-                  <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm font-medium">
-                    {member.group}
-                  </span>
+                  <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm font-medium">{member.group}</span>
                 </td>
                 <td className="p-4">
-                  <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-medium">
-                    {member.status}
-                  </span>
+                  <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-medium">{member.status}</span>
                 </td>
                 <td className="p-4">
                   <div className="flex gap-2">
-                    <button 
-                      onClick={() => {
-                        setEditingItem(member);
-                        setShowMemberModal(true);
-                      }}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                    >
+                    <button onClick={() => { setEditingItem(member); setShowMemberModal(true); }} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg">
                       <Edit size={18} />
                     </button>
-                    <button 
-                      onClick={() => handleDeleteMember(member.id)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                    >
+                    <button onClick={() => handleDeleteMember(member.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg">
                       <Trash2 size={18} />
                     </button>
                   </div>
@@ -589,12 +490,97 @@ export default function ChurchManagementSystem() {
             ))}
           </tbody>
         </table>
-        {filteredMembers.length === 0 && (
-          <div className="p-8 text-center text-gray-500">
-            Nenhum membro encontrado
-          </div>
-        )}
+        {filteredMembers.length === 0 && <div className="p-8 text-center text-gray-500">Nenhum membro encontrado</div>}
       </div>
+    </div>
+  );
+
+  const Cells = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-gray-800">Gestão de Células</h2>
+        <button onClick={() => { setEditingItem(null); setShowCellModal(true); }} className="flex items-center gap-2 bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors shadow-lg">
+          <Plus size={20} /> Nova Célula
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 text-white shadow-lg">
+          <p className="text-sm opacity-90 mb-2">Total de Células</p>
+          <p className="text-3xl font-bold">{cells.length}</p>
+        </div>
+        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white shadow-lg">
+          <p className="text-sm opacity-90 mb-2">Total de Participantes</p>
+          <p className="text-3xl font-bold">{cells.reduce((sum, c) => sum + Number(c.members), 0)}</p>
+        </div>
+        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white shadow-lg">
+          <p className="text-sm opacity-90 mb-2">Média por Célula</p>
+          <p className="text-3xl font-bold">{cells.length > 0 ? Math.round(cells.reduce((sum, c) => sum + Number(c.members), 0) / cells.length) : 0}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {cells.map(cell => (
+          <div key={cell.id} className="bg-white rounded-xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-shadow">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-12 h-12 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center">
+                    <Home size={24} className="text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-800">{cell.name}</h3>
+                    <p className="text-sm text-gray-600">Líder: {cell.leader}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2 mb-4">
+                  <div className="flex items-center gap-2 text-gray-700">
+                    <MapPin size={16} className="text-purple-600" />
+                    <span className="text-sm">{cell.address}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-700">
+                    <Calendar size={16} className="text-purple-600" />
+                    <span className="text-sm">{cell.day} às {cell.time}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-700">
+                    <Users size={16} className="text-purple-600" />
+                    <span className="text-sm font-semibold">{cell.members} participantes</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="flex-1 bg-gray-200 rounded-full h-2">
+                    <div className="bg-gradient-to-r from-purple-500 to-purple-600 h-2 rounded-full transition-all" style={{ width: `${Math.min((cell.members / 15) * 100, 100)}%` }}></div>
+                  </div>
+                  <span className="text-xs text-gray-600">{cell.members}/15</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <button onClick={() => { setEditingItem(cell); setShowCellModal(true); }} className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-all font-medium flex items-center justify-center gap-2">
+                <Edit size={18} /> Editar
+              </button>
+              <button onClick={() => handleDeleteCell(cell.id)} className="bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-all font-medium flex items-center justify-center gap-2">
+                <Trash2 size={18} />
+              </button>
+            </div>
+
+            <button className="w-full mt-2 bg-purple-100 text-purple-700 py-2 rounded-lg hover:bg-purple-200 transition-all font-medium flex items-center justify-center gap-2">
+              <UserPlus size={18} /> Ver Membros ({members.filter(m => m.cellId === cell.id).length})
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {cells.length === 0 && (
+        <div className="bg-white rounded-xl p-12 text-center text-gray-500 shadow-lg">
+          <Home size={48} className="mx-auto mb-4 text-gray-400" />
+          <p className="text-lg font-semibold mb-2">Nenhuma célula cadastrada</p>
+          <p className="text-sm">Comece criando sua primeira célula!</p>
+        </div>
+      )}
     </div>
   );
 
@@ -602,15 +588,8 @@ export default function ChurchManagementSystem() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-800">Gestão Financeira</h2>
-        <button 
-          onClick={() => {
-            setEditingItem(null);
-            setShowDonationModal(true);
-          }}
-          className="flex items-center gap-2 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors shadow-lg"
-        >
-          <Plus size={20} />
-          Registrar Doação
+        <button onClick={() => { setEditingItem(null); setShowDonationModal(true); }} className="flex items-center gap-2 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors shadow-lg">
+          <Plus size={20} /> Registrar Doação
         </button>
       </div>
 
@@ -645,42 +624,21 @@ export default function ChurchManagementSystem() {
             {donations.map((donation, i) => (
               <tr key={donation.id} className={`border-b border-gray-100 hover:bg-green-50 transition-colors ${i % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}>
                 <td className="p-4 font-semibold text-gray-800">{donation.member}</td>
-                <td className="p-4">
-                  <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">
-                    {donation.type}
-                  </span>
-                </td>
+                <td className="p-4"><span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">{donation.type}</span></td>
                 <td className="p-4 text-green-600 font-bold text-lg">R$ {Number(donation.amount).toLocaleString('pt-BR')}</td>
                 <td className="p-4 text-gray-600">{donation.method}</td>
                 <td className="p-4 text-gray-600">{donation.date}</td>
                 <td className="p-4">
                   <div className="flex gap-2">
-                    <button 
-                      onClick={() => {
-                        setEditingItem(donation);
-                        setShowDonationModal(true);
-                      }}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                    >
-                      <Edit size={18} />
-                    </button>
-                    <button 
-                      onClick={() => handleDeleteDonation(donation.id)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                    >
-                      <Trash2 size={18} />
-                    </button>
+                    <button onClick={() => { setEditingItem(donation); setShowDonationModal(true); }} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"><Edit size={18} /></button>
+                    <button onClick={() => handleDeleteDonation(donation.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg"><Trash2 size={18} /></button>
                   </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-        {donations.length === 0 && (
-          <div className="p-8 text-center text-gray-500">
-            Nenhuma doação registrada
-          </div>
-        )}
+        {donations.length === 0 && <div className="p-8 text-center text-gray-500">Nenhuma doação registrada</div>}
       </div>
     </div>
   );
@@ -689,33 +647,20 @@ export default function ChurchManagementSystem() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-800">Calendário de Eventos</h2>
-        <button 
-          onClick={() => {
-            setEditingItem(null);
-            setShowEventModal(true);
-          }}
-          className="flex items-center gap-2 bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors shadow-lg"
-        >
-          <Plus size={20} />
-          Criar Evento
+        <button onClick={() => { setEditingItem(null); setShowEventModal(true); }} className="flex items-center gap-2 bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors shadow-lg">
+          <Plus size={20} /> Criar Evento
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {events.map(event => (
           <div key={event.id} className="bg-white rounded-xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-shadow">
             <div className="flex items-start justify-between mb-4">
               <div>
                 <h3 className="text-xl font-bold text-gray-800 mb-2">{event.title}</h3>
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <Calendar size={16} />
-                    <span className="text-sm">{event.date} às {event.time}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <MapPin size={16} />
-                    <span className="text-sm">{event.location}</span>
-                  </div>
+                  <div className="flex items-center gap-2 text-gray-600"><Calendar size={16} /><span className="text-sm">{event.date} às {event.time}</span></div>
+                  <div className="flex items-center gap-2 text-gray-600"><MapPin size={16} /><span className="text-sm">{event.location}</span></div>
                 </div>
               </div>
               <div className="bg-purple-100 text-purple-700 px-4 py-2 rounded-lg text-center">
@@ -724,132 +669,37 @@ export default function ChurchManagementSystem() {
               </div>
             </div>
             <div className="flex gap-2">
-              <button 
-                onClick={() => {
-                  setEditingItem(event);
-                  setShowEventModal(true);
-                }}
-                className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-all font-medium flex items-center justify-center gap-2"
-              >
-                <Edit size={18} />
-                Editar
+              <button onClick={() => { setEditingItem(event); setShowEventModal(true); }} className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-all font-medium flex items-center justify-center gap-2">
+                <Edit size={18} /> Editar
               </button>
-              <button 
-                onClick={() => handleDeleteEvent(event.id)}
-                className="bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-all font-medium flex items-center justify-center gap-2"
-              >
+              <button onClick={() => handleDeleteEvent(event.id)} className="bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-all font-medium flex items-center justify-center gap-2">
                 <Trash2 size={18} />
               </button>
             </div>
           </div>
         ))}
       </div>
-      {events.length === 0 && (
-        <div className="bg-white rounded-xl p-12 text-center text-gray-500 shadow-lg">
-          Nenhum evento cadastrado
-        </div>
-      )}
+      {events.length === 0 && <div className="bg-white rounded-xl p-12 text-center text-gray-500 shadow-lg">Nenhum evento cadastrado</div>}
     </div>
   );
 
   const MemberModal = () => {
-    const [formData, setFormData] = useState(editingItem || {
-      name: '',
-      phone: '',
-      email: '',
-      group: 'Jovens',
-      status: 'Ativo'
-    });
-
+    const [formData, setFormData] = useState(editingItem || { name: '', phone: '', email: '', group: 'Jovens', status: 'Ativo', cellId: '' });
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-2xl">
-          <h3 className="text-2xl font-bold text-gray-800 mb-4">
-            {editingItem ? 'Editar Membro' : 'Novo Membro'}
-          </h3>
-          
+          <h3 className="text-2xl font-bold text-gray-800 mb-4">{editingItem ? 'Editar Membro' : 'Novo Membro'}</h3>
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nome Completo</label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder="João Silva"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
-              <input
-                type="tel"
-                value={formData.phone}
-                onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder="(21) 99999-9999"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-              <input
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({...formData, email: e.target.value})}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder="joao@email.com"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Grupo</label>
-              <select
-                value={formData.group}
-                onChange={(e) => setFormData({...formData, group: e.target.value})}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              >
-                <option>Jovens</option>
-                <option>Louvor</option>
-                <option>Diáconos</option>
-                <option>Crianças</option>
-                <option>Intercessão</option>
-                <option>Liderança</option>
-                <option>Visitante</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-              <select
-                value={formData.status}
-                onChange={(e) => setFormData({...formData, status: e.target.value})}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              >
-                <option>Ativo</option>
-                <option>Inativo</option>
-                <option>Visitante</option>
-              </select>
-            </div>
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">Nome Completo</label><input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" placeholder="João Silva" /></div>
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">Telefone</label><input type="tel" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" placeholder="(21) 99999-9999" /></div>
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">Email</label><input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" placeholder="joao@email.com" /></div>
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">Grupo</label><select value={formData.group} onChange={(e) => setFormData({...formData, group: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"><option>Jovens</option><option>Louvor</option><option>Diáconos</option><option>Crianças</option><option>Intercessão</option><option>Liderança</option><option>Visitante</option></select></div>
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">Status</label><select value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"><option>Ativo</option><option>Inativo</option><option>Visitante</option></select></div>
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">Célula (Opcional)</label><select value={formData.cellId} onChange={(e) => setFormData({...formData, cellId: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"><option value="">Nenhuma</option>{cells.map(cell => <option key={cell.id} value={cell.id}>{cell.name}</option>)}</select></div>
           </div>
-
           <div className="flex gap-3 mt-6">
-            <button
-              onClick={() => {
-                setShowMemberModal(false);
-                setEditingItem(null);
-              }}
-              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={() => handleSaveMember(formData)}
-              className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
-            >
-              <Save size={18} />
-              Salvar
-            </button>
+            <button onClick={() => { setShowMemberModal(false); setEditingItem(null); }} className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">Cancelar</button>
+            <button onClick={() => handleSaveMember(formData)} className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2"><Save size={18} />Salvar</button>
           </div>
         </div>
       </div>
@@ -857,103 +707,21 @@ export default function ChurchManagementSystem() {
   };
 
   const DonationModal = () => {
-    const [formData, setFormData] = useState(editingItem || {
-      member: '',
-      amount: '',
-      type: 'Dízimo',
-      date: new Date().toISOString().split('T')[0],
-      method: 'PIX'
-    });
-
+    const [formData, setFormData] = useState(editingItem || { member: '', amount: '', type: 'Dízimo', date: new Date().toISOString().split('T')[0], method: 'PIX' });
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-2xl">
-          <h3 className="text-2xl font-bold text-gray-800 mb-4">
-            {editingItem ? 'Editar Doação' : 'Registrar Doação'}
-          </h3>
-          
+          <h3 className="text-2xl font-bold text-gray-800 mb-4">{editingItem ? 'Editar Doação' : 'Registrar Doação'}</h3>
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Doador</label>
-              <input
-                type="text"
-                value={formData.member}
-                onChange={(e) => setFormData({...formData, member: e.target.value})}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                placeholder="Nome do doador ou 'Anônimo'"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
-              <input
-                type="number"
-                value={formData.amount}
-                onChange={(e) => setFormData({...formData, amount: e.target.value})}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                placeholder="100.00"
-                step="0.01"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
-              <select
-                value={formData.type}
-                onChange={(e) => setFormData({...formData, type: e.target.value})}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              >
-                <option>Dízimo</option>
-                <option>Oferta</option>
-                <option>Missões</option>
-                <option>Construção</option>
-                <option>Eventos</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Método de Pagamento</label>
-              <select
-                value={formData.method}
-                onChange={(e) => setFormData({...formData, method: e.target.value})}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              >
-                <option>PIX</option>
-                <option>Dinheiro</option>
-                <option>Cartão</option>
-                <option>Transferência</option>
-                <option>Cheque</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Data</label>
-              <input
-                type="date"
-                value={formData.date}
-                onChange={(e) => setFormData({...formData, date: e.target.value})}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              />
-            </div>
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">Doador</label><input type="text" value={formData.member} onChange={(e) => setFormData({...formData, member: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500" placeholder="Nome do doador" /></div>
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label><input type="number" value={formData.amount} onChange={(e) => setFormData({...formData, amount: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500" placeholder="100.00" step="0.01" /></div>
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label><select value={formData.type} onChange={(e) => setFormData({...formData, type: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"><option>Dízimo</option><option>Oferta</option><option>Missões</option><option>Construção</option><option>Eventos</option></select></div>
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">Método</label><select value={formData.method} onChange={(e) => setFormData({...formData, method: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"><option>PIX</option><option>Dinheiro</option><option>Cartão</option><option>Transferência</option><option>Cheque</option></select></div>
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">Data</label><input type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500" /></div>
           </div>
-
           <div className="flex gap-3 mt-6">
-            <button
-              onClick={() => {
-                setShowDonationModal(false);
-                setEditingItem(null);
-              }}
-              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={() => handleSaveDonation(formData)}
-              className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
-            >
-              <Save size={18} />
-              Salvar
-            </button>
+            <button onClick={() => { setShowDonationModal(false); setEditingItem(null); }} className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">Cancelar</button>
+            <button onClick={() => handleSaveDonation(formData)} className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center justify-center gap-2"><Save size={18} />Salvar</button>
           </div>
         </div>
       </div>
@@ -961,95 +729,48 @@ export default function ChurchManagementSystem() {
   };
 
   const EventModal = () => {
-    const [formData, setFormData] = useState(editingItem || {
-      title: '',
-      date: new Date().toISOString().split('T')[0],
-      time: '19:00',
-      location: '',
-      attendees: 0
-    });
-
+    const [formData, setFormData] = useState(editingItem || { title: '', date: new Date().toISOString().split('T')[0], time: '19:00', location: '', attendees: 0 });
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-2xl">
-          <h3 className="text-2xl font-bold text-gray-800 mb-4">
-            {editingItem ? 'Editar Evento' : 'Criar Evento'}
-          </h3>
-          
+          <h3 className="text-2xl font-bold text-gray-800 mb-4">{editingItem ? 'Editar Evento' : 'Criar Evento'}</h3>
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Evento</label>
-              <input
-                type="text"
-                value={formData.title}
-                onChange={(e) => setFormData({...formData, title: e.target.value})}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder="Culto de Domingo"
-              />
-            </div>
-
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">Nome do Evento</label><input type="text" value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" placeholder="Culto de Domingo" /></div>
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Data</label>
-                <input
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) => setFormData({...formData, date: e.target.value})}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Horário</label>
-                <input
-                  type="time"
-                  value={formData.time}
-                  onChange={(e) => setFormData({...formData, time: e.target.value})}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
-              </div>
+              <div><label className="block text-sm font-medium text-gray-700 mb-1">Data</label><input type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" /></div>
+              <div><label className="block text-sm font-medium text-gray-700 mb-1">Horário</label><input type="time" value={formData.time} onChange={(e) => setFormData({...formData, time: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" /></div>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Local</label>
-              <input
-                type="text"
-                value={formData.location}
-                onChange={(e) => setFormData({...formData, location: e.target.value})}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder="Templo Principal"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nº Esperado de Participantes</label>
-              <input
-                type="number"
-                value={formData.attendees}
-                onChange={(e) => setFormData({...formData, attendees: e.target.value})}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder="100"
-              />
-            </div>
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">Local</label><input type="text" value={formData.location} onChange={(e) => setFormData({...formData, location: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" placeholder="Templo Principal" /></div>
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">Nº Participantes</label><input type="number" value={formData.attendees} onChange={(e) => setFormData({...formData, attendees: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" placeholder="100" /></div>
           </div>
-
           <div className="flex gap-3 mt-6">
-            <button
-              onClick={() => {
-                setShowEventModal(false);
-                setEditingItem(null);
-              }}
-              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={() => handleSaveEvent(formData)}
-              className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
-            >
-              <Save size={18} />
-              Salvar
-            </button>
+            <button onClick={() => { setShowEventModal(false); setEditingItem(null); }} className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">Cancelar</button>
+            <button onClick={() => handleSaveEvent(formData)} className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2"><Save size={18} />Salvar</button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const CellModal = () => {
+    const [formData, setFormData] = useState(editingItem || { name: '', leader: '', address: '', day: 'Terça-feira', time: '19:30', members: 0 });
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-2xl">
+          <h3 className="text-2xl font-bold text-gray-800 mb-4">{editingItem ? 'Editar Célula' : 'Nova Célula'}</h3>
+          <div className="space-y-4">
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">Nome da Célula</label><input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" placeholder="Célula Vitória" /></div>
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">Líder</label><input type="text" value={formData.leader} onChange={(e) => setFormData({...formData, leader: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" placeholder="Nome do líder" /></div>
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">Endereço</label><input type="text" value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" placeholder="Rua das Flores, 123" /></div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><label className="block text-sm font-medium text-gray-700 mb-1">Dia</label><select value={formData.day} onChange={(e) => setFormData({...formData, day: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"><option>Segunda-feira</option><option>Terça-feira</option><option>Quarta-feira</option><option>Quinta-feira</option><option>Sexta-feira</option><option>Sábado</option><option>Domingo</option></select></div>
+              <div><label className="block text-sm font-medium text-gray-700 mb-1">Horário</label><input type="time" value={formData.time} onChange={(e) => setFormData({...formData, time: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" /></div>
+            </div>
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">Nº Participantes</label><input type="number" value={formData.members} onChange={(e) => setFormData({...formData, members: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" placeholder="0" /></div>
+          </div>
+          <div className="flex gap-3 mt-6">
+            <button onClick={() => { setShowCellModal(false); setEditingItem(null); }} className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">Cancelar</button>
+            <button onClick={() => handleSaveCell(formData)} className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2"><Save size={18} />Salvar</button>
           </div>
         </div>
       </div>
@@ -1061,7 +782,7 @@ export default function ChurchManagementSystem() {
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-purple-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Carregando sistema...</p>
+          <p className="text-gray-600">Carregando...</p>
         </div>
       </div>
     );
@@ -1076,22 +797,23 @@ export default function ChurchManagementSystem() {
             <h1 className="text-3xl font-bold text-gray-800 mb-2">
               {activeTab === 'dashboard' && 'Dashboard Geral'}
               {activeTab === 'members' && 'Gestão de Membros'}
+              {activeTab === 'cells' && 'Gestão de Células'}
               {activeTab === 'donations' && 'Controle Financeiro'}
               {activeTab === 'events' && 'Eventos e Atividades'}
             </h1>
-            <p className="text-gray-600">Sistema completo de gestão eclesiástica com dados reais</p>
+            <p className="text-gray-600">Sistema completo de gestão eclesiástica</p>
           </div>
-          
           {activeTab === 'dashboard' && <Dashboard />}
           {activeTab === 'members' && <Members />}
+          {activeTab === 'cells' && <Cells />}
           {activeTab === 'donations' && <Donations />}
           {activeTab === 'events' && <Events />}
         </div>
       </div>
-
       {showMemberModal && <MemberModal />}
       {showDonationModal && <DonationModal />}
       {showEventModal && <EventModal />}
+      {showCellModal && <CellModal />}
     </div>
   );
 }
