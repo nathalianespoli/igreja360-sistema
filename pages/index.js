@@ -85,6 +85,7 @@ export default function ChurchManagementSystem() {
   const [showEventModal, setShowEventModal] = useState(false);
   const [showCellModal, setShowCellModal] = useState(false);
   const [showCellMembersModal, setShowCellMembersModal] = useState(false);
+  const [showAddMemberToCellModal, setShowAddMemberToCellModal] = useState(false);
   const [selectedCell, setSelectedCell] = useState(null);
   const [editingItem, setEditingItem] = useState(null);
 
