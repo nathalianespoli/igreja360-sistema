@@ -84,6 +84,8 @@ export default function ChurchManagementSystem() {
   const [showDonationModal, setShowDonationModal] = useState(false);
   const [showEventModal, setShowEventModal] = useState(false);
   const [showCellModal, setShowCellModal] = useState(false);
+  const [showCellMembersModal, setShowCellMembersModal] = useState(false);
+  const [selectedCell, setSelectedCell] = useState(null);
   const [editingItem, setEditingItem] = useState(null);
 
   useEffect(() => {
@@ -223,6 +225,17 @@ export default function ChurchManagementSystem() {
       alert('Célula excluída!');
     } catch (error) {
       alert('Erro ao excluir.');
+    }
+  };
+
+  const handleRemoveMemberFromCell = async (memberId) => {
+    if (!confirm('Remover este membro da célula?')) return;
+    try {
+      await FirebaseSimulator.updateDocument('members', memberId, { cellId: '' });
+      setMembers(members.map(m => m.id === memberId ? { ...m, cellId: '' } : m));
+      alert('Membro removido da célula!');
+    } catch (error) {
+      alert('Erro ao remover membro.');
     }
   };
 
@@ -567,7 +580,7 @@ export default function ChurchManagementSystem() {
               </button>
             </div>
 
-            <button className="w-full mt-2 bg-purple-100 text-purple-700 py-2 rounded-lg hover:bg-purple-200 transition-all font-medium flex items-center justify-center gap-2">
+            <button className="w-full mt-2 bg-purple-100 text-purple-700 py-2 rounded-lg hover:bg-purple-200 transition-all font-medium flex items-center justify-center gap-2" onClick={() => { setSelectedCell(cell); setShowCellMembersModal(true); }}>
               <UserPlus size={18} /> Ver Membros ({members.filter(m => m.cellId === cell.id).length})
             </button>
           </div>
@@ -777,6 +790,110 @@ export default function ChurchManagementSystem() {
     );
   };
 
+  const CellMembersModal = () => {
+    if (!selectedCell) return null;
+    
+    const cellMembers = members.filter(m => m.cellId === selectedCell.id);
+    
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-xl p-6 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-2xl font-bold text-gray-800">{selectedCell.name}</h3>
+              <p className="text-sm text-gray-600">Líder: {selectedCell.leader}</p>
+            </div>
+            <button onClick={() => { setShowCellMembersModal(false); setSelectedCell(null); }} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+              <X size={24} className="text-gray-600" />
+            </button>
+          </div>
+
+          <div className="mb-4 p-4 bg-purple-50 rounded-lg border border-purple-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center">
+                  <Users size={24} className="text-white" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Total de membros vinculados</p>
+                  <p className="text-2xl font-bold text-purple-700">{cellMembers.length} {cellMembers.length === 1 ? 'pessoa' : 'pessoas'}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-sm text-gray-600">Meta da célula</p>
+                <p className="text-lg font-semibold text-gray-700">{selectedCell.members} participantes</p>
+              </div>
+            </div>
+          </div>
+
+          {cellMembers.length === 0 ? (
+            <div className="text-center py-12">
+              <Users size={48} className="mx-auto mb-4 text-gray-400" />
+              <p className="text-lg font-semibold text-gray-700 mb-2">Nenhum membro vinculado</p>
+              <p className="text-sm text-gray-600 mb-6">Vincule membros a esta célula editando o cadastro deles</p>
+              <button onClick={() => { setShowCellMembersModal(false); setSelectedCell(null); setShowMemberModal(true); }} className="inline-flex items-center gap-2 bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors">
+                <Plus size={20} /> Cadastrar Membro
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="mb-4">
+                <h4 className="text-sm font-semibold text-gray-700 mb-3">Membros Cadastrados:</h4>
+              </div>
+              <div className="space-y-3">
+                {cellMembers.map((member, index) => (
+                  <div key={member.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-purple-50 transition-colors border border-gray-200">
+                    <div className="flex items-center gap-4 flex-1">
+                      <div className="w-12 h-12 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                        {member.name.charAt(0)}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-semibold text-gray-800">{member.name}</p>
+                          <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs font-medium">{member.group}</span>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <Phone size={14} />
+                            <span>{member.phone}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <Mail size={14} />
+                            <span>{member.email}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => { setEditingItem(member); setShowCellMembersModal(false); setShowMemberModal(true); }} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Editar membro">
+                        <Edit size={18} />
+                      </button>
+                      <button onClick={() => handleRemoveMemberFromCell(member.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Remover da célula">
+                        <X size={18} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <button onClick={() => { setShowCellMembersModal(false); setShowMemberModal(true); }} className="w-full flex items-center justify-center gap-2 bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 transition-colors font-medium">
+                  <Plus size={20} /> Adicionar Novo Membro
+                </button>
+              </div>
+            </>
+          )}
+
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <button onClick={() => { setShowCellMembersModal(false); setSelectedCell(null); }} className="w-full py-2 text-gray-600 hover:text-gray-800 transition-colors font-medium">
+              Fechar
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
@@ -814,6 +931,7 @@ export default function ChurchManagementSystem() {
       {showDonationModal && <DonationModal />}
       {showEventModal && <EventModal />}
       {showCellModal && <CellModal />}
+      {showCellMembersModal && <CellMembersModal />}
     </div>
   );
 }
