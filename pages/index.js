@@ -240,6 +240,17 @@ export default function ChurchManagementSystem() {
     }
   };
 
+  const handleAddMemberToCell = async (memberId, cellId) => {
+    try {
+      await FirebaseSimulator.updateDocument('members', memberId, { cellId: cellId });
+      setMembers(members.map(m => m.id === memberId ? { ...m, cellId: cellId } : m));
+      setShowAddMemberToCellModal(false);
+      alert('Membro vinculado à célula com sucesso!');
+    } catch (error) {
+      alert('Erro ao vincular membro.');
+    }
+  };
+
   const stats = {
     totalMembers: members.length,
     activeMembers: members.filter(m => m.status === 'Ativo').length,
@@ -832,9 +843,14 @@ export default function ChurchManagementSystem() {
               <Users size={48} className="mx-auto mb-4 text-gray-400" />
               <p className="text-lg font-semibold text-gray-700 mb-2">Nenhum membro vinculado</p>
               <p className="text-sm text-gray-600 mb-6">Vincule membros a esta célula editando o cadastro deles</p>
-              <button onClick={() => { setShowCellMembersModal(false); setSelectedCell(null); setShowMemberModal(true); }} className="inline-flex items-center gap-2 bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors">
-                <Plus size={20} /> Cadastrar Membro
-              </button>
+              <div className="space-y-3">
+                <button onClick={() => setShowAddMemberToCellModal(true)} className="w-full inline-flex items-center justify-center gap-2 bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors">
+                  <UserPlus size={20} /> Vincular Membro Existente
+                </button>
+                <button onClick={() => { setShowCellMembersModal(false); setSelectedCell(null); setShowMemberModal(true); }} className="w-full inline-flex items-center justify-center gap-2 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors">
+                  <Plus size={20} /> Cadastrar Novo Membro
+                </button>
+              </div>
             </div>
           ) : (
             <>
@@ -877,9 +893,12 @@ export default function ChurchManagementSystem() {
                 ))}
               </div>
 
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <button onClick={() => { setShowCellMembersModal(false); setShowMemberModal(true); }} className="w-full flex items-center justify-center gap-2 bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 transition-colors font-medium">
-                  <Plus size={20} /> Adicionar Novo Membro
+              <div className="mt-6 pt-6 border-t border-gray-200 space-y-3">
+                <button onClick={() => setShowAddMemberToCellModal(true)} className="w-full flex items-center justify-center gap-2 bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 transition-colors font-medium">
+                  <UserPlus size={20} /> Vincular Membro Existente
+                </button>
+                <button onClick={() => { setShowCellMembersModal(false); setShowMemberModal(true); }} className="w-full flex items-center justify-center gap-2 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition-colors font-medium">
+                  <Plus size={20} /> Cadastrar Novo Membro
                 </button>
               </div>
             </>
@@ -888,6 +907,110 @@ export default function ChurchManagementSystem() {
           <div className="mt-4 pt-4 border-t border-gray-200">
             <button onClick={() => { setShowCellMembersModal(false); setSelectedCell(null); }} className="w-full py-2 text-gray-600 hover:text-gray-800 transition-colors font-medium">
               Fechar
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const AddMemberToCellModal = () => {
+    if (!selectedCell) return null;
+    
+    const availableMembers = members.filter(m => !m.cellId || m.cellId === '');
+    const [searchQuery, setSearchQuery] = useState('');
+    
+    const filteredAvailableMembers = availableMembers.filter(m =>
+      m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      m.email.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-xl p-6 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-2xl font-bold text-gray-800">Vincular Membro à Célula</h3>
+              <p className="text-sm text-gray-600">{selectedCell.name}</p>
+            </div>
+            <button onClick={() => setShowAddMemberToCellModal(false)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+              <X size={24} className="text-gray-600" />
+            </button>
+          </div>
+
+          <div className="mb-6">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+              <input
+                type="text"
+                placeholder="Buscar membro por nome ou email..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              />
+            </div>
+          </div>
+
+          {availableMembers.length === 0 ? (
+            <div className="text-center py-12">
+              <Users size={48} className="mx-auto mb-4 text-gray-400" />
+              <p className="text-lg font-semibold text-gray-700 mb-2">Todos os membros já estão em células</p>
+              <p className="text-sm text-gray-600 mb-6">Cadastre novos membros ou remova membros de outras células primeiro</p>
+              <button onClick={() => { setShowAddMemberToCellModal(false); setShowCellMembersModal(false); setShowMemberModal(true); }} className="inline-flex items-center gap-2 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors">
+                <Plus size={20} /> Cadastrar Novo Membro
+              </button>
+            </div>
+          ) : filteredAvailableMembers.length === 0 ? (
+            <div className="text-center py-12">
+              <Search size={48} className="mx-auto mb-4 text-gray-400" />
+              <p className="text-lg font-semibold text-gray-700 mb-2">Nenhum membro encontrado</p>
+              <p className="text-sm text-gray-600">Tente buscar com outro termo</p>
+            </div>
+          ) : (
+            <>
+              <div className="mb-4">
+                <h4 className="text-sm font-semibold text-gray-700 mb-3">
+                  Membros disponíveis ({filteredAvailableMembers.length}):
+                </h4>
+              </div>
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {filteredAvailableMembers.map((member) => (
+                  <div key={member.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-purple-50 transition-colors border border-gray-200">
+                    <div className="flex items-center gap-4 flex-1">
+                      <div className="w-12 h-12 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                        {member.name.charAt(0)}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-semibold text-gray-800">{member.name}</p>
+                          <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs font-medium">{member.group}</span>
+                          <span className="bg-gray-200 text-gray-700 px-2 py-0.5 rounded text-xs font-medium">{member.status}</span>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <Phone size={14} />
+                            <span>{member.phone}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <Mail size={14} />
+                            <span>{member.email}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <button onClick={() => handleAddMemberToCell(member.id, selectedCell.id)} className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium flex items-center gap-2">
+                      <UserPlus size={18} />
+                      Vincular
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <button onClick={() => setShowAddMemberToCellModal(false)} className="w-full py-2 text-gray-600 hover:text-gray-800 transition-colors font-medium">
+              Cancelar
             </button>
           </div>
         </div>
@@ -933,6 +1056,7 @@ export default function ChurchManagementSystem() {
       {showEventModal && <EventModal />}
       {showCellModal && <CellModal />}
       {showCellMembersModal && <CellMembersModal />}
+      {showAddMemberToCellModal && <AddMemberToCellModal />}
     </div>
   );
 }
