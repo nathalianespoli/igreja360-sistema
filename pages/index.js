@@ -1,10 +1,225 @@
-// ==========================================
+);
+  };
+
+  const Canteens = () => {
+    const todayCanteens = canteens.filter(c => c.date === new Date().toISOString().split('T')[0] && c.status !== 'Finalizada');
+    
+    const CanteensList = () => (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-gray-800">Gestão de Cantinas</h2>
+          <button onClick={() => { setEditingItem(null); setShowCanteenModal(true); }} className="flex items-center gap-2 bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition-colors shadow-lg">
+            <Plus size={20} /> Nova Cantina
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-6 text-white shadow-lg">
+            <p className="text-sm opacity-90 mb-2">Cantinas Agendadas</p>
+            <p className="text-3xl font-bold">{canteens.filter(c => c.status === 'Planejada').length}</p>
+          </div>
+          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white shadow-lg">
+            <p className="text-sm opacity-90 mb-2">Em Andamento</p>
+            <p className="text-3xl font-bold">{canteens.filter(c => c.status === 'Em andamento').length}</p>
+          </div>
+          <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white shadow-lg">
+            <p className="text-sm opacity-90 mb-2">Total Arrecadado</p>
+            <p className="text-3xl font-bold">R$ {canteenSales.reduce((sum, s) => sum + s.total, 0).toLocaleString('pt-BR')}</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {canteens.sort((a, b) => new Date(b.date) - new Date(a.date)).map(canteen => {
+            const sales = canteenSales.filter(s => s.canteenId === canteen.id);
+            const totalSold = sales.reduce((sum, s) => sum + s.quantity, 0);
+            const totalRevenue = sales.reduce((sum, s) => sum + s.total, 0);
+            
+            return (
+              <div key={canteen.id} className="bg-white rounded-xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-shadow">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <ShoppingCart size={24} className="text-orange-600" />
+                      <div>
+                        <h3 className="text-xl font-bold text-gray-800">{canteen.snack}</h3>
+                        <p className="text-sm text-gray-600">{canteen.cellName}</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2 mb-4">
+                      <div className="flex items-center gap-2 text-gray-700">
+                        <Calendar size={16} className="text-orange-600" />
+                        <span className="text-sm">{canteen.date}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-gray-700">
+                        <DollarSign size={16} className="text-green-600" />
+                        <span className="text-sm font-semibold">R$ {canteen.price.toFixed(2)} por unidade</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-gray-700">
+                        <ShoppingCart size={16} className="text-blue-600" />
+                        <span className="text-sm">Quantidade planejada: {canteen.totalQuantity}</span>
+                      </div>
+                    </div>
+                    {sales.length > 0 && (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <p className="text-sm text-gray-600">Vendidos</p>
+                            <p className="text-2xl font-bold text-green-700">{totalSold}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm text-gray-600">Arrecadado</p>
+                            <p className="text-2xl font-bold text-green-700">R$ {totalRevenue.toLocaleString('pt-BR')}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    canteen.status === 'Planejada' ? 'bg-blue-100 text-blue-700' :
+                    canteen.status === 'Em andamento' ? 'bg-yellow-100 text-yellow-700' :
+                    'bg-green-100 text-green-700'
+                  }`}>
+                    {canteen.status}
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  {canteen.status !== 'Finalizada' && (
+                    <button onClick={() => { setSelectedCanteen(canteen); setCanteenSubTab('cashier'); }} className="flex-1 bg-orange-600 text-white py-2 rounded-lg hover:bg-orange-700 transition-all font-medium flex items-center justify-center gap-2">
+                      <CreditCard size={18} /> Abrir Caixa
+                    </button>
+                  )}
+                  <button onClick={() => { setEditingItem(canteen); setShowCanteenModal(true); }} className="bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-all">
+                    <Edit size={18} />
+                  </button>
+                  <button onClick={() => handleDeleteCanteen(canteen.id)} className="bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-all">
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {canteens.length === 0 && (
+          <div className="bg-white rounded-xl p-12 text-center text-gray-500 shadow-lg">
+            <ShoppingCart size={48} className="mx-auto mb-4 text-gray-400" />
+            <p className="text-lg font-semibold mb-2">Nenhuma cantina cadastrada</p>
+            <p className="text-sm">Comece criando sua primeira cantina!</p>
+          </div>
+        )}
+      </div>
+    );
+
+    const CashierPDV = () => {
+      if (!selectedCanteen) {
+        if (todayCanteens.length === 0) {
+          return (
+            <div className="bg-white rounded-xl p-12 text-center shadow-lg">
+              <ShoppingCart size={48} className="mx-auto mb-4 text-gray-400" />
+              <p className="text-lg font-semibold text-gray-700 mb-2">Nenhuma cantina hoje</p>
+              <p className="text-sm text-gray-600 mb-6">Agende uma cantina para usar o caixa</p>
+              <button onClick={() => setCanteenSubTab('list')} className="bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700">
+                Ver Todas as Cantinas
+              </button>
+            </div>
+          );
+        }
+        setSelectedCanteen(todayCanteens[0]);
+        return null;
+      }
+
+      const [saleQuantity, setSaleQuantity] = useState(1);
+      const [paymentMethod, setPaymentMethod] = useState('Dinheiro');
+      
+      const sales = canteenSales.filter(s => s.canteenId === selectedCanteen.id);
+      const totalSold = sales.reduce((sum, s) => sum + s.quantity, 0);
+      const totalRevenue = sales.reduce((sum, s) => sum + s.total, 0);
+      
+      const salesByMethod = {
+        Dinheiro: sales.filter(s => s.paymentMethod === 'Dinheiro').reduce((sum, s) => sum + s.total, 0),
+        Cartão: sales.filter(s => s.paymentMethod === 'Cartão').reduce((sum, s) => sum + s.total, 0),
+        PIX: sales.filter(s => s.paymentMethod === 'PIX').reduce((sum, s) => sum + s.total, 0),
+      };
+
+      const handleQuickSale = async () => {
+        if (saleQuantity < 1) {
+          alert('Quantidade deve ser maior que zero!');
+          return;
+        }
+        
+        const success = await handleRegisterSale(selectedCanteen.id, saleQuantity, paymentMethod);
+        if (success) {
+          setSaleQuantity(1);
+        }
+      };
+
+      return (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-800">Caixa / PDV</h2>
+              <p className="text-gray-600">{selectedCanteen.snack} - {selectedCanteen.cellName}</p>
+            </div>
+            <div className="flex gap-2">
+              {selectedCanteen.status !== 'Finalizada' && (
+                <button onClick={() => handleFinishCanteen(selectedCanteen.id)} className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700">
+                  Finalizar Cantina
+                </button>
+              )}
+              <button onClick={() => { setSelectedCanteen(null); setCanteenSubTab('list'); }} className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700">
+                Voltar
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-6 text-white shadow-lg">
+              <p className="text-sm opacity-90 mb-2">Preço Unitário</p>
+              <p className="text-3xl font-bold">R$ {selectedCanteen.price.toFixed(2)}</p>
+            </div>
+            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white shadow-lg">
+              <p className="text-sm opacity-90 mb-2">Vendidos</p>
+              <p className="text-3xl font-bold">{totalSold} / {selectedCanteen.totalQuantity}</p>
+            </div>
+            <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white shadow-lg">
+              <p className="text-sm opacity-90 mb-2">Total Arrecadado</p>
+              <p className="text-3xl font-bold">R$ {totalRevenue.toLocaleString('pt-BR')}</p>
+            </div>
+            <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 text-white shadow-lg">
+              <p className="text-sm opacity-90 mb-2">Restante</p>
+              <p className="text-3xl font-bold">{selectedCanteen.totalQuantity - totalSold}</p>
+            </div>
+          </div>
+
+          {selectedCanteen.status !== 'Finalizada' && (
+            <div className="bg-white rounded-xl p-6 shadow-lg border-2 border-orange-500">
+              <h3 className="text-xl font-bold text-gray-800 mb-4">Registrar Venda</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Quantidade</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={saleQuantity}
+                    onChange={(e) => setSaleQuantity(parseInt(e.target.value) || 1)}
+                    className="w-full px-4 py-3 text-2xl font-bold border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-center"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Forma de Pagamento</label>
+                  <select
+                    value={paymentMethod}
+                    onChange={(e) => setPaymentMethod(e.target.value)}
+                    className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                  >
+                    <option>Dinheiro</option>
+                    <option>Cartão</option>// ==========================================
 // SISTEMA IGREJA 360° - VERSÃO COMPLETA
 // Com Gráficos + Gestão de Células
 // ==========================================
 
 import React, { useState, useEffect } from 'react';
-import { Users, DollarSign, Calendar, BarChart3, Plus, Search, Menu, X, Heart, Phone, Mail, MapPin, Save, Trash2, Edit, TrendingUp, UserPlus, Home } from 'lucide-react';
+import { Users, DollarSign, Calendar, BarChart3, Plus, Search, Menu, X, Heart, Phone, Mail, MapPin, Save, Trash2, Edit, TrendingUp, UserPlus, Home, ShoppingCart, CreditCard, Banknote } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 // ==========================================
@@ -39,6 +254,15 @@ const FirebaseSimulator = {
     cells: [
       { id: '1', name: 'Célula Vitória', leader: 'Pedro Costa', address: 'Rua das Flores, 123', day: 'Terça-feira', time: '19:30', members: 12, createdAt: new Date().toISOString() },
       { id: '2', name: 'Célula Esperança', leader: 'Ana Oliveira', address: 'Av. Principal, 456', day: 'Quinta-feira', time: '20:00', members: 8, createdAt: new Date().toISOString() },
+    ],
+    canteens: [
+      { id: '1', date: '2025-10-25', cellId: '1', cellName: 'Célula Vitória', snack: 'Cachorro-quente', price: 8, totalQuantity: 100, status: 'Planejada', createdAt: new Date().toISOString() },
+      { id: '2', date: '2025-10-18', cellId: '2', cellName: 'Célula Esperança', snack: 'Coxinha + Refrigerante', price: 10, totalQuantity: 80, status: 'Finalizada', createdAt: new Date().toISOString() },
+    ],
+    canteenSales: [
+      { id: '1', canteenId: '2', quantity: 5, paymentMethod: 'Dinheiro', total: 50, timestamp: new Date().toISOString() },
+      { id: '2', canteenId: '2', quantity: 3, paymentMethod: 'PIX', total: 30, timestamp: new Date().toISOString() },
+      { id: '3', canteenId: '2', quantity: 8, paymentMethod: 'Cartão', total: 80, timestamp: new Date().toISOString() },
     ]
   },
   
@@ -71,6 +295,7 @@ const FirebaseSimulator = {
 
 export default function ChurchManagementSystem() {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [canteenSubTab, setCanteenSubTab] = useState('list');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
@@ -79,6 +304,8 @@ export default function ChurchManagementSystem() {
   const [donations, setDonations] = useState([]);
   const [events, setEvents] = useState([]);
   const [cells, setCells] = useState([]);
+  const [canteens, setCanteens] = useState([]);
+  const [canteenSales, setCanteenSales] = useState([]);
   
   const [showMemberModal, setShowMemberModal] = useState(false);
   const [showDonationModal, setShowDonationModal] = useState(false);
@@ -86,7 +313,9 @@ export default function ChurchManagementSystem() {
   const [showCellModal, setShowCellModal] = useState(false);
   const [showCellMembersModal, setShowCellMembersModal] = useState(false);
   const [showAddMemberToCellModal, setShowAddMemberToCellModal] = useState(false);
+  const [showCanteenModal, setShowCanteenModal] = useState(false);
   const [selectedCell, setSelectedCell] = useState(null);
+  const [selectedCanteen, setSelectedCanteen] = useState(null);
   const [editingItem, setEditingItem] = useState(null);
 
   useEffect(() => {
@@ -96,16 +325,20 @@ export default function ChurchManagementSystem() {
   const loadAllData = async () => {
     setLoading(true);
     try {
-      const [membersData, donationsData, eventsData, cellsData] = await Promise.all([
+      const [membersData, donationsData, eventsData, cellsData, canteensData, canteenSalesData] = await Promise.all([
         FirebaseSimulator.getCollection('members'),
         FirebaseSimulator.getCollection('donations'),
         FirebaseSimulator.getCollection('events'),
-        FirebaseSimulator.getCollection('cells')
+        FirebaseSimulator.getCollection('cells'),
+        FirebaseSimulator.getCollection('canteens'),
+        FirebaseSimulator.getCollection('canteenSales')
       ]);
       setMembers(membersData);
       setDonations(donationsData);
       setEvents(eventsData);
       setCells(cellsData);
+      setCanteens(canteensData);
+      setCanteenSales(canteenSalesData);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
       alert('Erro ao carregar dados.');
@@ -251,6 +484,89 @@ export default function ChurchManagementSystem() {
     }
   };
 
+  // ==========================================
+  // FUNÇÕES DE CANTINAS
+  // ==========================================
+  const handleSaveCanteen = async (canteenData) => {
+    try {
+      const cellData = cells.find(c => c.id === canteenData.cellId);
+      const dataWithCellName = { ...canteenData, cellName: cellData?.name || '' };
+      
+      if (editingItem) {
+        await FirebaseSimulator.updateDocument('canteens', editingItem.id, dataWithCellName);
+        setCanteens(canteens.map(c => c.id === editingItem.id ? { ...c, ...dataWithCellName } : c));
+        alert('Cantina atualizada!');
+      } else {
+        const newCanteen = await FirebaseSimulator.addDocument('canteens', dataWithCellName);
+        setCanteens([...canteens, newCanteen]);
+        alert('Cantina cadastrada!');
+      }
+      setShowCanteenModal(false);
+      setEditingItem(null);
+    } catch (error) {
+      alert('Erro ao salvar cantina.');
+    }
+  };
+
+  const handleDeleteCanteen = async (id) => {
+    if (!confirm('Excluir esta cantina?')) return;
+    try {
+      await FirebaseSimulator.deleteDocument('canteens', id);
+      setCanteens(canteens.filter(c => c.id !== id));
+      // Deletar vendas associadas
+      const relatedSales = canteenSales.filter(s => s.canteenId === id);
+      for (const sale of relatedSales) {
+        await FirebaseSimulator.deleteDocument('canteenSales', sale.id);
+      }
+      setCanteenSales(canteenSales.filter(s => s.canteenId !== id));
+      alert('Cantina excluída!');
+    } catch (error) {
+      alert('Erro ao excluir.');
+    }
+  };
+
+  const handleRegisterSale = async (canteenId, quantity, paymentMethod) => {
+    try {
+      const canteen = canteens.find(c => c.id === canteenId);
+      if (!canteen) return;
+      
+      const total = quantity * canteen.price;
+      const saleData = {
+        canteenId,
+        quantity,
+        paymentMethod,
+        total,
+        timestamp: new Date().toISOString()
+      };
+      
+      const newSale = await FirebaseSimulator.addDocument('canteenSales', saleData);
+      setCanteenSales([...canteenSales, newSale]);
+      
+      // Atualizar status da cantina para "Em andamento"
+      if (canteen.status === 'Planejada') {
+        await FirebaseSimulator.updateDocument('canteens', canteenId, { status: 'Em andamento' });
+        setCanteens(canteens.map(c => c.id === canteenId ? { ...c, status: 'Em andamento' } : c));
+      }
+      
+      return true;
+    } catch (error) {
+      alert('Erro ao registrar venda.');
+      return false;
+    }
+  };
+
+  const handleFinishCanteen = async (canteenId) => {
+    if (!confirm('Finalizar esta cantina? Não será possível adicionar mais vendas.')) return;
+    try {
+      await FirebaseSimulator.updateDocument('canteens', canteenId, { status: 'Finalizada' });
+      setCanteens(canteens.map(c => c.id === canteenId ? { ...c, status: 'Finalizada' } : c));
+      alert('Cantina finalizada!');
+      setCanteenSubTab('list');
+    } catch (error) {
+      alert('Erro ao finalizar.');
+    }
+  };
+
   const stats = {
     totalMembers: members.length,
     activeMembers: members.filter(m => m.status === 'Ativo').length,
@@ -283,6 +599,7 @@ export default function ChurchManagementSystem() {
           { id: 'dashboard', icon: BarChart3, label: 'Dashboard' },
           { id: 'members', icon: Users, label: 'Membros' },
           { id: 'cells', icon: Home, label: 'Células' },
+          { id: 'canteens', icon: ShoppingCart, label: 'Cantinas' },
           { id: 'donations', icon: DollarSign, label: 'Doações' },
           { id: 'events', icon: Calendar, label: 'Eventos' },
         ].map(item => (
@@ -303,7 +620,7 @@ export default function ChurchManagementSystem() {
         <div className="p-4 border-t border-purple-700">
           <div className="bg-purple-700 rounded-lg p-4">
             <p className="text-sm font-medium mb-1">✅ Sistema Completo</p>
-            <p className="text-xs opacity-80">Com Células e Gráficos</p>
+            <p className="text-xs opacity-80">Células + Cantinas + Gráficos</p>
           </div>
         </div>
       )}
@@ -1018,6 +1335,90 @@ export default function ChurchManagementSystem() {
     );
   };
 
+  const CanteenModal = () => {
+    const [formData, setFormData] = useState(editingItem || {
+      date: new Date().toISOString().split('T')[0],
+      cellId: '',
+      snack: '',
+      price: '',
+      totalQuantity: '',
+      status: 'Planejada'
+    });
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-2xl">
+          <h3 className="text-2xl font-bold text-gray-800 mb-4">{editingItem ? 'Editar Cantina' : 'Nova Cantina'}</h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Data da Cantina</label>
+              <input
+                type="date"
+                value={formData.date}
+                onChange={(e) => setFormData({...formData, date: e.target.value})}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Célula Responsável</label>
+              <select
+                value={formData.cellId}
+                onChange={(e) => setFormData({...formData, cellId: e.target.value})}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+              >
+                <option value="">Selecione uma célula</option>
+                {cells.map(cell => (
+                  <option key={cell.id} value={cell.id}>{cell.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Lanche do Dia</label>
+              <input
+                type="text"
+                value={formData.snack}
+                onChange={(e) => setFormData({...formData, snack: e.target.value})}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                placeholder="Ex: Cachorro-quente, Coxinha..."
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
+                <input
+                  type="number"
+                  value={formData.price}
+                  onChange={(e) => setFormData({...formData, price: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                  placeholder="8.00"
+                  step="0.50"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Quantidade</label>
+                <input
+                  type="number"
+                  value={formData.totalQuantity}
+                  onChange={(e) => setFormData({...formData, totalQuantity: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                  placeholder="100"
+                />
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-3 mt-6">
+            <button onClick={() => { setShowCanteenModal(false); setEditingItem(null); }} className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+              Cancelar
+            </button>
+            <button onClick={() => handleSaveCanteen({...formData, price: parseFloat(formData.price), totalQuantity: parseInt(formData.totalQuantity)})} className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 flex items-center justify-center gap-2">
+              <Save size={18} />Salvar
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
@@ -1039,14 +1440,17 @@ export default function ChurchManagementSystem() {
               {activeTab === 'dashboard' && 'Dashboard Geral'}
               {activeTab === 'members' && 'Gestão de Membros'}
               {activeTab === 'cells' && 'Gestão de Células'}
+              {activeTab === 'canteens' && 'Gestão de Cantinas'}
               {activeTab === 'donations' && 'Controle Financeiro'}
               {activeTab === 'events' && 'Eventos e Atividades'}
             </h1>
             <p className="text-gray-600">Sistema completo de gestão eclesiástica</p>
           </div>
+                    
           {activeTab === 'dashboard' && <Dashboard />}
           {activeTab === 'members' && <Members />}
           {activeTab === 'cells' && <Cells />}
+          {activeTab === 'canteens' && <Canteens />}
           {activeTab === 'donations' && <Donations />}
           {activeTab === 'events' && <Events />}
         </div>
@@ -1057,6 +1461,7 @@ export default function ChurchManagementSystem() {
       {showCellModal && <CellModal />}
       {showCellMembersModal && <CellMembersModal />}
       {showAddMemberToCellModal && <AddMemberToCellModal />}
+      {showCanteenModal && <CanteenModal />}
     </div>
   );
 }
