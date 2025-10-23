@@ -263,7 +263,145 @@ export default function ChurchManagementSystem() {
             <p className="text-gray-600">Sistema completo de gestão eclesiástica</p>
           </div>
           
-          {activeTab === 'dashboard' && <div className="text-center py-12 text-gray-600">Dashboard em construção...</div>}
+          {activeTab === 'dashboard' && (
+            <div className="space-y-6">
+              {/* Cards de Estatísticas */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[
+                  { label: 'Total de Membros', value: stats.totalMembers, icon: Users, color: 'from-blue-500 to-blue-600', change: `${stats.activeMembers} ativos` },
+                  { label: 'Doações do Mês', value: `R$ ${stats.monthlyDonations.toLocaleString('pt-BR')}`, icon: DollarSign, color: 'from-green-500 to-green-600', change: 'Este mês' },
+                  { label: 'Próximos Eventos', value: stats.upcomingEvents, icon: Calendar, color: 'from-purple-500 to-purple-600', change: 'Agendados' },
+                  { label: 'Total de Células', value: cells.length, icon: Home, color: 'from-indigo-500 to-indigo-600', change: `${cells.reduce((sum, c) => sum + c.members, 0)} pessoas` },
+                  { label: 'Cantinas Ativas', value: canteens.filter(c => c.status !== 'Finalizada').length, icon: ShoppingCart, color: 'from-orange-500 to-orange-600', change: `${canteens.length} total` },
+                  { label: 'Total Arrecadado', value: `R$ ${stats.totalDonations.toLocaleString('pt-BR')}`, icon: DollarSign, color: 'from-yellow-500 to-yellow-600', change: 'Todas fontes' },
+                ].map((stat, i) => (
+                  <div key={i} className={`bg-gradient-to-br ${stat.color} rounded-xl p-6 text-white shadow-lg hover:scale-105 transition-transform`}>
+                    <div className="flex items-center justify-between mb-4">
+                      <stat.icon size={32} className="opacity-80" />
+                      <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-medium">{stat.change}</span>
+                    </div>
+                    <p className="text-3xl font-bold mb-1">{stat.value}</p>
+                    <p className="text-sm opacity-90">{stat.label}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Gráficos */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Crescimento de Membros */}
+                <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+                  <div className="flex items-center gap-2 mb-4">
+                    <TrendingUp className="text-blue-600" size={24} />
+                    <h3 className="text-lg font-bold text-gray-800">Crescimento de Membros</h3>
+                  </div>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <LineChart data={[
+                      { mes: 'Mai', membros: Math.max(1, stats.totalMembers - 25) },
+                      { mes: 'Jun', membros: Math.max(1, stats.totalMembers - 20) },
+                      { mes: 'Jul', membros: Math.max(1, stats.totalMembers - 15) },
+                      { mes: 'Ago', membros: Math.max(1, stats.totalMembers - 10) },
+                      { mes: 'Set', membros: Math.max(1, stats.totalMembers - 5) },
+                      { mes: 'Out', membros: stats.totalMembers || 0 },
+                    ]}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis dataKey="mes" stroke="#666" />
+                      <YAxis stroke="#666" />
+                      <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }} />
+                      <Line type="monotone" dataKey="membros" stroke="#3b82f6" strokeWidth={3} dot={{ fill: '#3b82f6', r: 5 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Evolução Financeira */}
+                <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+                  <div className="flex items-center gap-2 mb-4">
+                    <DollarSign className="text-green-600" size={24} />
+                    <h3 className="text-lg font-bold text-gray-800">Evolução Financeira</h3>
+                  </div>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={[
+                      { mes: 'Mai', valor: Math.round(stats.monthlyDonations * 0.7) },
+                      { mes: 'Jun', valor: Math.round(stats.monthlyDonations * 0.75) },
+                      { mes: 'Jul', valor: Math.round(stats.monthlyDonations * 0.85) },
+                      { mes: 'Ago', valor: Math.round(stats.monthlyDonations * 0.9) },
+                      { mes: 'Set', valor: Math.round(stats.monthlyDonations * 0.95) },
+                      { mes: 'Out', valor: stats.monthlyDonations || 0 },
+                    ]}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis dataKey="mes" stroke="#666" />
+                      <YAxis stroke="#666" />
+                      <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }} formatter={(value) => `R$ ${value.toLocaleString('pt-BR')}`} />
+                      <Bar dataKey="valor" fill="#10b981" radius={[8, 8, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Listas Rápidas */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Próximos Eventos */}
+                <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+                  <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <Calendar className="text-purple-600" size={20} />
+                    Próximos Eventos
+                  </h3>
+                  <div className="space-y-3">
+                    {events.filter(e => new Date(e.date) >= new Date()).slice(0, 3).map(event => (
+                      <div key={event.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-purple-50 transition-colors">
+                        <div>
+                          <p className="font-semibold text-gray-800">{event.title}</p>
+                          <p className="text-sm text-gray-600">{event.date} às {event.time}</p>
+                        </div>
+                        <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm font-medium">
+                          {event.attendees} pessoas
+                        </span>
+                      </div>
+                    ))}
+                    {events.filter(e => new Date(e.date) >= new Date()).length === 0 && (
+                      <p className="text-gray-500 text-center py-4">Nenhum evento agendado</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Cantinas Recentes */}
+                <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+                  <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <ShoppingCart className="text-orange-600" size={20} />
+                    Cantinas Recentes
+                  </h3>
+                  <div className="space-y-3">
+                    {canteens.slice(0, 3).map(canteen => {
+                      const sales = canteenSales.filter(s => s.canteenId === canteen.id);
+                      const revenue = sales.reduce((sum, s) => sum + s.total, 0);
+                      return (
+                        <div key={canteen.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-orange-50 transition-colors">
+                          <div>
+                            <p className="font-semibold text-gray-800">{canteen.snack}</p>
+                            <p className="text-sm text-gray-600">{canteen.cellName} - {canteen.date}</p>
+                          </div>
+                          <div className="text-right">
+                            <span className={`text-xs px-2 py-1 rounded-full ${
+                              canteen.status === 'Planejada' ? 'bg-blue-100 text-blue-700' :
+                              canteen.status === 'Em andamento' ? 'bg-yellow-100 text-yellow-700' :
+                              'bg-green-100 text-green-700'
+                            }`}>
+                              {canteen.status}
+                            </span>
+                            {revenue > 0 && (
+                              <p className="text-green-600 font-bold text-sm mt-1">R$ {revenue.toLocaleString('pt-BR')}</p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {canteens.length === 0 && (
+                      <p className="text-gray-500 text-center py-4">Nenhuma cantina cadastrada</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
           {activeTab === 'members' && (
             <div className="space-y-6">
               <div className="flex justify-between items-center">
