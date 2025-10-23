@@ -266,52 +266,169 @@ export default function ChurchManagementSystem() {
           {activeTab === 'dashboard' && <div className="text-center py-12 text-gray-600">Dashboard em construção...</div>}
           {activeTab === 'members' && (
             <div className="space-y-6">
-              <button onClick={() => { setEditingItem(null); setShowMemberModal(true); }} className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700">
-                <Plus size={20} className="inline mr-2" /> Novo Membro
-              </button>
-              <div className="bg-white rounded-xl p-6">
-                <p>Total: {members.length} membros</p>
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold">Membros</h2>
+                <button onClick={() => { setEditingItem(null); setShowMemberModal(true); }} className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 flex items-center gap-2">
+                  <Plus size={20} /> Novo Membro
+                </button>
+              </div>
+              <div className="bg-white rounded-xl p-6 shadow-lg">
+                <div className="space-y-4">
+                  {filteredMembers.map(m => (
+                    <div key={m.id} className="flex justify-between items-center p-4 border rounded-lg">
+                      <div>
+                        <p className="font-bold">{m.name}</p>
+                        <p className="text-sm text-gray-600">{m.email} • {m.phone}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => handleDeleteMember(m.id)} className="text-red-600 hover:bg-red-50 p-2 rounded">
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {filteredMembers.length === 0 && <p className="text-center text-gray-500 py-8">Nenhum membro cadastrado</p>}
+                </div>
               </div>
             </div>
           )}
-          {activeTab === 'cells' && <div className="bg-white rounded-xl p-6">Células: {cells.length}</div>}
+          {activeTab === 'cells' && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold">Células</h2>
+              <div className="grid md:grid-cols-2 gap-4">
+                {cells.map(c => (
+                  <div key={c.id} className="bg-white p-6 rounded-xl shadow-lg">
+                    <h3 className="text-xl font-bold mb-2">{c.name}</h3>
+                    <p className="text-gray-600">Líder: {c.leader}</p>
+                    <p className="text-gray-600">{c.day} às {c.time}</p>
+                    <p className="text-gray-600">{c.address}</p>
+                    <p className="font-semibold mt-2">{c.members} participantes</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {activeTab === 'canteens' && (
             <div className="space-y-6">
               <div className="flex gap-2 border-b">
-                <button onClick={() => setCanteenSubTab('list')} className={`px-4 py-2 ${canteenSubTab === 'list' ? 'border-b-2 border-orange-600 text-orange-600' : 'text-gray-600'}`}>
-                  Cantinas
+                <button onClick={() => setCanteenSubTab('list')} className={`px-4 py-2 ${canteenSubTab === 'list' ? 'border-b-2 border-orange-600 text-orange-600 font-semibold' : 'text-gray-600'}`}>
+                  📋 Cantinas
                 </button>
-                <button onClick={() => setCanteenSubTab('cashier')} className={`px-4 py-2 ${canteenSubTab === 'cashier' ? 'border-b-2 border-orange-600 text-orange-600' : 'text-gray-600'}`}>
-                  Caixa
+                <button onClick={() => setCanteenSubTab('cashier')} className={`px-4 py-2 ${canteenSubTab === 'cashier' ? 'border-b-2 border-orange-600 text-orange-600 font-semibold' : 'text-gray-600'}`}>
+                  💰 Caixa/PDV
                 </button>
               </div>
               
               {canteenSubTab === 'list' && (
                 <div>
-                  <button onClick={() => { setEditingItem(null); setShowCanteenModal(true); }} className="bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700">
-                    <Plus size={20} className="inline mr-2" /> Nova Cantina
-                  </button>
-                  <div className="mt-6 grid gap-4">
+                  <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-2xl font-bold">Gestão de Cantinas</h2>
+                    <button onClick={() => { setEditingItem(null); setShowCanteenModal(true); }} className="bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 flex items-center gap-2">
+                      <Plus size={20} /> Nova Cantina
+                    </button>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-6 text-white">
+                      <p className="text-sm opacity-90 mb-2">Total de Cantinas</p>
+                      <p className="text-3xl font-bold">{canteens.length}</p>
+                    </div>
+                    <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white">
+                      <p className="text-sm opacity-90 mb-2">Lanches Vendidos</p>
+                      <p className="text-3xl font-bold">{canteenSales.reduce((sum, s) => sum + s.quantity, 0)}</p>
+                    </div>
+                    <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white">
+                      <p className="text-sm opacity-90 mb-2">Total Arrecadado</p>
+                      <p className="text-3xl font-bold">R$ {canteenSales.reduce((sum, s) => sum + s.total, 0).toLocaleString('pt-BR')}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid gap-4">
                     {canteens.length === 0 ? (
-                      <p className="text-gray-500">Nenhuma cantina cadastrada</p>
+                      <div className="bg-white rounded-xl p-12 text-center shadow-lg">
+                        <ShoppingCart size={48} className="mx-auto mb-4 text-gray-400" />
+                        <p className="text-lg font-semibold text-gray-700 mb-2">Nenhuma cantina cadastrada</p>
+                        <p className="text-sm text-gray-600">Comece criando sua primeira cantina!</p>
+                      </div>
                     ) : (
-                      canteens.map(c => (
-                        <div key={c.id} className="bg-white p-4 rounded-lg shadow">
-                          <h3 className="font-bold">{c.snack}</h3>
-                          <p className="text-sm text-gray-600">{c.cellName} - {c.date}</p>
-                          <p>R$ {c.price} x {c.totalQuantity} unidades</p>
-                        </div>
-                      ))
+                      canteens.sort((a, b) => new Date(b.date) - new Date(a.date)).map(c => {
+                        const sales = canteenSales.filter(s => s.canteenId === c.id);
+                        const totalSold = sales.reduce((sum, s) => sum + s.quantity, 0);
+                        const totalRevenue = sales.reduce((sum, s) => sum + s.total, 0);
+                        
+                        return (
+                          <div key={c.id} className="bg-white p-6 rounded-lg shadow-lg border border-gray-100">
+                            <div className="flex justify-between items-start mb-4">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-3 mb-2">
+                                  <ShoppingCart className="text-orange-600" size={24} />
+                                  <div>
+                                    <h3 className="text-xl font-bold">{c.snack}</h3>
+                                    <p className="text-sm text-gray-600">{c.cellName}</p>
+                                  </div>
+                                </div>
+                                <div className="space-y-1 text-sm text-gray-700">
+                                  <p>📅 {c.date}</p>
+                                  <p>💵 R$ {c.price.toFixed(2)} por unidade</p>
+                                  <p>📦 Quantidade: {c.totalQuantity}</p>
+                                </div>
+                                {sales.length > 0 && (
+                                  <div className="mt-3 bg-green-50 border border-green-200 rounded-lg p-3">
+                                    <div className="flex justify-between">
+                                      <div>
+                                        <p className="text-xs text-gray-600">Vendidos</p>
+                                        <p className="text-xl font-bold text-green-700">{totalSold}</p>
+                                      </div>
+                                      <div className="text-right">
+                                        <p className="text-xs text-gray-600">Arrecadado</p>
+                                        <p className="text-xl font-bold text-green-700">R$ {totalRevenue.toLocaleString('pt-BR')}</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                                c.status === 'Planejada' ? 'bg-blue-100 text-blue-700' :
+                                c.status === 'Em andamento' ? 'bg-yellow-100 text-yellow-700' :
+                                'bg-green-100 text-green-700'
+                              }`}>
+                                {c.status}
+                              </span>
+                            </div>
+                            <div className="flex gap-2">
+                              {c.status !== 'Finalizada' && (
+                                <button
+                                  onClick={() => { setSelectedCanteen(c); setCanteenSubTab('cashier'); }}
+                                  className="flex-1 bg-orange-600 text-white py-2 rounded-lg hover:bg-orange-700 font-medium flex items-center justify-center gap-2"
+                                >
+                                  <CreditCard size={18} /> Abrir Caixa
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })
                     )}
                   </div>
                 </div>
               )}
               
               {canteenSubTab === 'cashier' && (
-                <div className="bg-white p-6 rounded-xl">
+                <div>
                   {selectedCanteen ? (
                     <div>
-                      <h2 className="text-2xl font-bold mb-4">{selectedCanteen.snack}</h2>
+                      <div className="flex justify-between items-center mb-6">
+                        <div>
+                          <h2 className="text-2xl font-bold">Caixa / PDV</h2>
+                          <p className="text-gray-600">{selectedCanteen.snack} - {selectedCanteen.cellName}</p>
+                        </div>
+                        <button
+                          onClick={() => { setSelectedCanteen(null); setCanteenSubTab('list'); }}
+                          className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700"
+                        >
+                          Voltar
+                        </button>
+                      </div>
                       <CashierComponent 
                         canteen={selectedCanteen}
                         sales={canteenSales.filter(s => s.canteenId === selectedCanteen.id)}
@@ -319,14 +436,54 @@ export default function ChurchManagementSystem() {
                       />
                     </div>
                   ) : (
-                    <p className="text-gray-500">Selecione uma cantina para abrir o caixa</p>
+                    <div className="bg-white rounded-xl p-12 text-center shadow-lg">
+                      <ShoppingCart size={48} className="mx-auto mb-4 text-gray-400" />
+                      <p className="text-lg font-semibold text-gray-700 mb-2">Nenhuma cantina selecionada</p>
+                      <p className="text-sm text-gray-600 mb-6">Vá em "Cantinas" e clique em "Abrir Caixa" em uma cantina</p>
+                      <button
+                        onClick={() => setCanteenSubTab('list')}
+                        className="bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700"
+                      >
+                        Ver Cantinas
+                      </button>
+                    </div>
                   )}
                 </div>
               )}
             </div>
           )}
-          {activeTab === 'donations' && <div className="bg-white rounded-xl p-6">Doações: R$ {stats.totalDonations}</div>}
-          {activeTab === 'events' && <div className="bg-white rounded-xl p-6">Eventos: {events.length}</div>}
+          {activeTab === 'donations' && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold">Doações</h2>
+              <div className="bg-white rounded-xl p-6 shadow-lg">
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="bg-green-100 p-6 rounded-lg">
+                    <p className="text-sm text-gray-600 mb-2">Total Arrecadado</p>
+                    <p className="text-3xl font-bold text-green-700">R$ {stats.totalDonations.toLocaleString('pt-BR')}</p>
+                  </div>
+                  <div className="bg-blue-100 p-6 rounded-lg">
+                    <p className="text-sm text-gray-600 mb-2">Doações Registradas</p>
+                    <p className="text-3xl font-bold text-blue-700">{donations.length}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          {activeTab === 'events' && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold">Eventos</h2>
+              <div className="grid md:grid-cols-2 gap-4">
+                {events.map(e => (
+                  <div key={e.id} className="bg-white p-6 rounded-xl shadow-lg">
+                    <h3 className="text-xl font-bold mb-2">{e.title}</h3>
+                    <p className="text-gray-600">📅 {e.date} às {e.time}</p>
+                    <p className="text-gray-600">📍 {e.location}</p>
+                    <p className="font-semibold mt-2">👥 {e.attendees} participantes</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
