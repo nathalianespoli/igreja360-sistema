@@ -419,6 +419,12 @@ export default function ChurchManagementSystem() {
                         <p className="text-sm text-gray-600">{m.email} • {m.phone}</p>
                       </div>
                       <div className="flex gap-2">
+                        <button 
+                          onClick={() => { setEditingItem(m); setShowMemberModal(true); }}
+                          className="text-blue-600 hover:bg-blue-50 p-2 rounded"
+                        >
+                          <Edit size={18} />
+                        </button>
                         <button onClick={() => handleDeleteMember(m.id)} className="text-red-600 hover:bg-red-50 p-2 rounded">
                           <Trash2 size={18} />
                         </button>
@@ -629,8 +635,15 @@ export default function ChurchManagementSystem() {
       {showMemberModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-6 max-w-md w-full">
-            <h3 className="text-2xl font-bold mb-4">Novo Membro</h3>
-            <button onClick={() => setShowMemberModal(false)} className="mt-4 w-full bg-gray-300 py-2 rounded">Fechar</button>
+            <h3 className="text-2xl font-bold mb-4">{editingItem ? 'Editar' : 'Novo'} Membro</h3>
+            <MemberForm
+              initialData={editingItem}
+              cells={cells}
+              onSave={(data) => {
+                handleSaveMember(data);
+              }}
+              onClose={() => { setShowMemberModal(false); setEditingItem(null); }}
+            />
           </div>
         </div>
       )}
@@ -643,6 +656,103 @@ export default function ChurchManagementSystem() {
           onClose={() => { setShowCanteenModal(false); setEditingItem(null); }}
         />
       )}
+    </div>
+  );
+}
+
+// Formulário de Membro
+function MemberForm({ initialData, cells, onSave, onClose }) {
+  const [formData, setFormData] = useState(initialData || {
+    name: '',
+    phone: '',
+    email: '',
+    group: 'Jovens',
+    status: 'Ativo',
+    cellId: ''
+  });
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Nome Completo</label>
+        <input
+          type="text"
+          value={formData.name}
+          onChange={(e) => setFormData({...formData, name: e.target.value})}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+          placeholder="João Silva"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
+        <input
+          type="tel"
+          value={formData.phone}
+          onChange={(e) => setFormData({...formData, phone: e.target.value})}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+          placeholder="(21) 99999-9999"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+        <input
+          type="email"
+          value={formData.email}
+          onChange={(e) => setFormData({...formData, email: e.target.value})}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+          placeholder="joao@email.com"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Grupo</label>
+        <select
+          value={formData.group}
+          onChange={(e) => setFormData({...formData, group: e.target.value})}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+        >
+          <option>Jovens</option>
+          <option>Louvor</option>
+          <option>Diáconos</option>
+          <option>Crianças</option>
+          <option>Intercessão</option>
+          <option>Liderança</option>
+          <option>Visitante</option>
+        </select>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+        <select
+          value={formData.status}
+          onChange={(e) => setFormData({...formData, status: e.target.value})}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+        >
+          <option>Ativo</option>
+          <option>Inativo</option>
+          <option>Visitante</option>
+        </select>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Célula (Opcional)</label>
+        <select
+          value={formData.cellId}
+          onChange={(e) => setFormData({...formData, cellId: e.target.value})}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+        >
+          <option value="">Nenhuma</option>
+          {cells.map(cell => (
+            <option key={cell.id} value={cell.id}>{cell.name}</option>
+          ))}
+        </select>
+      </div>
+      <div className="flex gap-3 mt-6">
+        <button onClick={onClose} className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+          Cancelar
+        </button>
+        <button onClick={() => onSave(formData)} className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2">
+          <Save size={18} />
+          Salvar
+        </button>
+      </div>
     </div>
   );
 }
