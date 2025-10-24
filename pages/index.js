@@ -8,12 +8,12 @@ import { Users, DollarSign, Calendar, BarChart3, Plus, Search, Menu, X, Heart, P
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyByDEDzi_PH7Azlzr20j5HDRKyF4miCFdU",
-  authDomain: "igreja360-sistema.firebaseapp.com",
-  projectId: "igreja360-sistema",
-  storageBucket: "igreja360-sistema.firebasestorage.app",
-  messagingSenderId: "993807884811",
-  appId: "1:993807884811:web:9710d1119853a178d45d0e"
+  apiKey: "SUA_API_KEY_AQUI",
+  authDomain: "SEU_PROJETO.firebaseapp.com",
+  projectId: "SEU_PROJETO_ID",
+  storageBucket: "SEU_PROJETO.appspot.com",
+  messagingSenderId: "SEU_MESSAGING_ID",
+  appId: "SEU_APP_ID"
 };
 
 const FirebaseSimulator = {
@@ -180,6 +180,19 @@ export default function ChurchManagementSystem() {
       return true;
     } catch (error) {
       return false;
+    }
+  };
+
+  const handleFinishCanteen = async (canteenId) => {
+    if (!confirm('Finalizar esta cantina? Não será possível adicionar mais vendas.')) return;
+    try {
+      await FirebaseSimulator.updateDocument('canteens', canteenId, { status: 'Finalizada' });
+      setCanteens(canteens.map(c => c.id === canteenId ? { ...c, status: 'Finalizada' } : c));
+      alert('Cantina finalizada!');
+      setSelectedCanteen(null);
+      setCanteenSubTab('list');
+    } catch (error) {
+      alert('Erro ao finalizar.');
     }
   };
 
@@ -566,12 +579,23 @@ export default function ChurchManagementSystem() {
                           <h2 className="text-2xl font-bold">Caixa / PDV</h2>
                           <p className="text-gray-600">{selectedCanteen.snack} - {selectedCanteen.cellName}</p>
                         </div>
-                        <button
-                          onClick={() => { setSelectedCanteen(null); setCanteenSubTab('list'); }}
-                          className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700"
-                        >
-                          Voltar
-                        </button>
+                        <div className="flex gap-2">
+                          {selectedCanteen.status !== 'Finalizada' && (
+                            <button
+                              onClick={() => handleFinishCanteen(selectedCanteen.id)}
+                              className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 flex items-center gap-2"
+                            >
+                              <Save size={20} />
+                              Finalizar Cantina
+                            </button>
+                          )}
+                          <button
+                            onClick={() => { setSelectedCanteen(null); setCanteenSubTab('list'); }}
+                            className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700"
+                          >
+                            Voltar
+                          </button>
+                        </div>
                       </div>
                       <CashierComponent 
                         canteen={selectedCanteen}
