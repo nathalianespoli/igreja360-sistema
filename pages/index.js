@@ -8,12 +8,12 @@ import { Users, DollarSign, Calendar, BarChart3, Plus, Search, Menu, X, Heart, P
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 const firebaseConfig = {
-  apiKey: "SUA_API_KEY_AQUI",
-  authDomain: "SEU_PROJETO.firebaseapp.com",
-  projectId: "SEU_PROJETO_ID",
-  storageBucket: "SEU_PROJETO.appspot.com",
-  messagingSenderId: "SEU_MESSAGING_ID",
-  appId: "SEU_APP_ID"
+  apiKey: "AIzaSyByDEDzi_PH7Azlzr20j5HDRKyF4miCFdU",
+  authDomain: "igreja360-sistema.firebaseapp.com",
+  projectId: "igreja360-sistema",
+  storageBucket: "igreja360-sistema.firebasestorage.app",
+  messagingSenderId: "993807884811",
+  appId: "1:993807884811:web:9710d1119853a178d45d0e"
 };
 
 const FirebaseSimulator = {
@@ -83,10 +83,7 @@ export default function ChurchManagementSystem() {
   const [showDonationModal, setShowDonationModal] = useState(false);
   const [showEventModal, setShowEventModal] = useState(false);
   const [showCellModal, setShowCellModal] = useState(false);
-  const [showCellMembersModal, setShowCellMembersModal] = useState(false);
-  const [showAddMemberToCellModal, setShowAddMemberToCellModal] = useState(false);
   const [showCanteenModal, setShowCanteenModal] = useState(false);
-  const [selectedCell, setSelectedCell] = useState(null);
   const [selectedCanteen, setSelectedCanteen] = useState(null);
   const [editingItem, setEditingItem] = useState(null);
 
@@ -117,7 +114,6 @@ export default function ChurchManagementSystem() {
     setLoading(false);
   };
 
-  // Handlers simplificados
   const handleSaveMember = async (memberData) => {
     try {
       if (editingItem) {
@@ -135,10 +131,55 @@ export default function ChurchManagementSystem() {
     }
   };
 
-  const handleDeleteMember = async (id) => {
-    if (!confirm('Excluir?')) return;
-    await FirebaseSimulator.deleteDocument('members', id);
-    setMembers(members.filter(m => m.id !== id));
+  const handleSaveCell = async (cellData) => {
+    try {
+      if (editingItem) {
+        await FirebaseSimulator.updateDocument('cells', editingItem.id, cellData);
+        setCells(cells.map(c => c.id === editingItem.id ? { ...c, ...cellData } : c));
+      } else {
+        const newCell = await FirebaseSimulator.addDocument('cells', cellData);
+        setCells([...cells, newCell]);
+      }
+      setShowCellModal(false);
+      setEditingItem(null);
+      alert('Salvo!');
+    } catch (error) {
+      alert('Erro');
+    }
+  };
+
+  const handleSaveDonation = async (donationData) => {
+    try {
+      if (editingItem) {
+        await FirebaseSimulator.updateDocument('donations', editingItem.id, donationData);
+        setDonations(donations.map(d => d.id === editingItem.id ? { ...d, ...donationData } : d));
+      } else {
+        const newDonation = await FirebaseSimulator.addDocument('donations', donationData);
+        setDonations([...donations, newDonation]);
+      }
+      setShowDonationModal(false);
+      setEditingItem(null);
+      alert('Salvo!');
+    } catch (error) {
+      alert('Erro');
+    }
+  };
+
+  const handleSaveEvent = async (eventData) => {
+    try {
+      if (editingItem) {
+        await FirebaseSimulator.updateDocument('events', editingItem.id, eventData);
+        setEvents(events.map(e => e.id === editingItem.id ? { ...e, ...eventData } : e));
+      } else {
+        const newEvent = await FirebaseSimulator.addDocument('events', eventData);
+        setEvents([...events, newEvent]);
+      }
+      setShowEventModal(false);
+      setEditingItem(null);
+      alert('Salvo!');
+    } catch (error) {
+      alert('Erro');
+    }
   };
 
   const handleSaveCanteen = async (canteenData) => {
@@ -184,7 +225,7 @@ export default function ChurchManagementSystem() {
   };
 
   const handleFinishCanteen = async (canteenId) => {
-    if (!confirm('Finalizar esta cantina? Não será possível adicionar mais vendas.')) return;
+    if (!confirm('Finalizar esta cantina?')) return;
     try {
       await FirebaseSimulator.updateDocument('canteens', canteenId, { status: 'Finalizada' });
       setCanteens(canteens.map(c => c.id === canteenId ? { ...c, status: 'Finalizada' } : c));
@@ -192,15 +233,22 @@ export default function ChurchManagementSystem() {
       setSelectedCanteen(null);
       setCanteenSubTab('list');
     } catch (error) {
-      alert('Erro ao finalizar.');
+      alert('Erro');
     }
+  };
+
+  const handleDelete = async (collection, id, setState, state) => {
+    if (!confirm('Excluir?')) return;
+    await FirebaseSimulator.deleteDocument(collection, id);
+    setState(state.filter(item => item.id !== id));
   };
 
   const stats = {
     totalMembers: members.length,
     activeMembers: members.filter(m => m.status === 'Ativo').length,
-    totalDonations: donations.reduce((sum, d) => sum + Number(d.amount), 0),
+    totalDonations: donations.reduce((sum, d) => sum + Number(d.amount), 0) + canteenSales.reduce((sum, s) => sum + s.total, 0),
     monthlyDonations: donations.filter(d => new Date(d.date).getMonth() === new Date().getMonth()).reduce((sum, d) => sum + Number(d.amount), 0),
+    monthlyCanteenRevenue: canteenSales.filter(s => new Date(s.timestamp).getMonth() === new Date().getMonth()).reduce((sum, s) => sum + s.total, 0),
     upcomingEvents: events.filter(e => new Date(e.date) >= new Date()).length,
     averageAttendance: events.length > 0 ? Math.round(events.reduce((sum, e) => sum + Number(e.attendees), 0) / events.length) : 0
   };
@@ -262,526 +310,484 @@ export default function ChurchManagementSystem() {
       </div>
 
       {/* CONTEÚDO PRINCIPAL */}
-      <div className={`flex-1 ${sidebarOpen ? 'ml-64' : 'ml-20'} transition-all duration-300`}>
-        <div className="p-8">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">
-              {activeTab === 'dashboard' && 'Dashboard Geral'}
-              {activeTab === 'members' && 'Gestão de Membros'}
-              {activeTab === 'cells' && 'Gestão de Células'}
-              {activeTab === 'canteens' && 'Gestão de Cantinas'}
-              {activeTab === 'donations' && 'Controle Financeiro'}
-              {activeTab === 'events' && 'Eventos e Atividades'}
-            </h1>
-            <p className="text-gray-600">Sistema completo de gestão eclesiástica</p>
+      <div className={`flex-1 ${sidebarOpen ? 'ml-64' : 'ml-20'} transition-all duration-300 p-8`}>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">
+            {activeTab === 'dashboard' && 'Dashboard Geral'}
+            {activeTab === 'members' && 'Gestão de Membros'}
+            {activeTab === 'cells' && 'Gestão de Células'}
+            {activeTab === 'canteens' && 'Gestão de Cantinas'}
+            {activeTab === 'donations' && 'Controle Financeiro'}
+            {activeTab === 'events' && 'Eventos e Atividades'}
+          </h1>
+          <p className="text-gray-600">Sistema completo de gestão eclesiástica</p>
+        </div>
+
+        {/* DASHBOARD */}
+        {activeTab === 'dashboard' && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[
+                { label: 'Total de Membros', value: stats.totalMembers, icon: Users, color: 'from-blue-500 to-blue-600', change: `${stats.activeMembers} ativos` },
+                { label: 'Doações + Cantinas', value: `R$ ${stats.totalDonations.toLocaleString('pt-BR')}`, icon: DollarSign, color: 'from-green-500 to-green-600', change: 'Total' },
+                { label: 'Próximos Eventos', value: stats.upcomingEvents, icon: Calendar, color: 'from-purple-500 to-purple-600', change: 'Agendados' },
+                { label: 'Total de Células', value: cells.length, icon: Home, color: 'from-indigo-500 to-indigo-600', change: `${cells.reduce((sum, c) => sum + c.members, 0)} pessoas` },
+                { label: 'Cantinas Ativas', value: canteens.filter(c => c.status !== 'Finalizada').length, icon: ShoppingCart, color: 'from-orange-500 to-orange-600', change: `${canteens.length} total` },
+                { label: 'Cantinas (Mês)', value: `R$ ${stats.monthlyCanteenRevenue.toLocaleString('pt-BR')}`, icon: DollarSign, color: 'from-yellow-500 to-yellow-600', change: 'Este mês' },
+              ].map((stat, i) => (
+                <div key={i} className={`bg-gradient-to-br ${stat.color} rounded-xl p-6 text-white shadow-lg hover:scale-105 transition-transform`}>
+                  <div className="flex items-center justify-between mb-4">
+                    <stat.icon size={32} className="opacity-80" />
+                    <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-medium">{stat.change}</span>
+                  </div>
+                  <p className="text-3xl font-bold mb-1">{stat.value}</p>
+                  <p className="text-sm opacity-90">{stat.label}</p>
+                </div>
+              ))}
+            </div>
+            <div className="bg-white rounded-xl p-6 shadow-lg text-center">
+              <p className="text-gray-600">📊 Gráficos disponíveis em breve</p>
+            </div>
           </div>
-          
-          {activeTab === 'dashboard' && (
-            <div className="space-y-6">
-              {/* Cards de Estatísticas */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[
-                  { label: 'Total de Membros', value: stats.totalMembers, icon: Users, color: 'from-blue-500 to-blue-600', change: `${stats.activeMembers} ativos` },
-                  { label: 'Doações do Mês', value: `R$ ${stats.monthlyDonations.toLocaleString('pt-BR')}`, icon: DollarSign, color: 'from-green-500 to-green-600', change: 'Este mês' },
-                  { label: 'Próximos Eventos', value: stats.upcomingEvents, icon: Calendar, color: 'from-purple-500 to-purple-600', change: 'Agendados' },
-                  { label: 'Total de Células', value: cells.length, icon: Home, color: 'from-indigo-500 to-indigo-600', change: `${cells.reduce((sum, c) => sum + c.members, 0)} pessoas` },
-                  { label: 'Cantinas Ativas', value: canteens.filter(c => c.status !== 'Finalizada').length, icon: ShoppingCart, color: 'from-orange-500 to-orange-600', change: `${canteens.length} total` },
-                  { label: 'Total Arrecadado', value: `R$ ${stats.totalDonations.toLocaleString('pt-BR')}`, icon: DollarSign, color: 'from-yellow-500 to-yellow-600', change: 'Todas fontes' },
-                ].map((stat, i) => (
-                  <div key={i} className={`bg-gradient-to-br ${stat.color} rounded-xl p-6 text-white shadow-lg hover:scale-105 transition-transform`}>
-                    <div className="flex items-center justify-between mb-4">
-                      <stat.icon size={32} className="opacity-80" />
-                      <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-medium">{stat.change}</span>
+        )}
+
+        {/* MEMBROS */}
+        {activeTab === 'members' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold">Membros</h2>
+              <button onClick={() => { setEditingItem(null); setShowMemberModal(true); }} className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 flex items-center gap-2">
+                <Plus size={20} /> Novo Membro
+              </button>
+            </div>
+            <div className="bg-white rounded-xl p-6 shadow-lg">
+              <div className="space-y-4">
+                {filteredMembers.map(m => (
+                  <div key={m.id} className="flex justify-between items-center p-4 border rounded-lg">
+                    <div>
+                      <p className="font-bold">{m.name}</p>
+                      <p className="text-sm text-gray-600">{m.email} • {m.phone}</p>
                     </div>
-                    <p className="text-3xl font-bold mb-1">{stat.value}</p>
-                    <p className="text-sm opacity-90">{stat.label}</p>
+                    <div className="flex gap-2">
+                      <button onClick={() => { setEditingItem(m); setShowMemberModal(true); }} className="text-blue-600 hover:bg-blue-50 p-2 rounded">
+                        <Edit size={18} />
+                      </button>
+                      <button onClick={() => handleDelete('members', m.id, setMembers, members)} className="text-red-600 hover:bg-red-50 p-2 rounded">
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
                   </div>
                 ))}
-              </div>
-
-              {/* Gráficos */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Crescimento de Membros */}
-                <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-                  <div className="flex items-center gap-2 mb-4">
-                    <TrendingUp className="text-blue-600" size={24} />
-                    <h3 className="text-lg font-bold text-gray-800">Crescimento de Membros</h3>
-                  </div>
-                  <ResponsiveContainer width="100%" height={250}>
-                    <LineChart data={[
-                      { mes: 'Mai', membros: Math.max(1, stats.totalMembers - 25) },
-                      { mes: 'Jun', membros: Math.max(1, stats.totalMembers - 20) },
-                      { mes: 'Jul', membros: Math.max(1, stats.totalMembers - 15) },
-                      { mes: 'Ago', membros: Math.max(1, stats.totalMembers - 10) },
-                      { mes: 'Set', membros: Math.max(1, stats.totalMembers - 5) },
-                      { mes: 'Out', membros: stats.totalMembers || 0 },
-                    ]}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                      <XAxis dataKey="mes" stroke="#666" />
-                      <YAxis stroke="#666" />
-                      <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }} />
-                      <Line type="monotone" dataKey="membros" stroke="#3b82f6" strokeWidth={3} dot={{ fill: '#3b82f6', r: 5 }} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-
-                {/* Evolução Financeira */}
-                <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-                  <div className="flex items-center gap-2 mb-4">
-                    <DollarSign className="text-green-600" size={24} />
-                    <h3 className="text-lg font-bold text-gray-800">Evolução Financeira</h3>
-                  </div>
-                  <ResponsiveContainer width="100%" height={250}>
-                    <BarChart data={[
-                      { mes: 'Mai', valor: Math.round(stats.monthlyDonations * 0.7) },
-                      { mes: 'Jun', valor: Math.round(stats.monthlyDonations * 0.75) },
-                      { mes: 'Jul', valor: Math.round(stats.monthlyDonations * 0.85) },
-                      { mes: 'Ago', valor: Math.round(stats.monthlyDonations * 0.9) },
-                      { mes: 'Set', valor: Math.round(stats.monthlyDonations * 0.95) },
-                      { mes: 'Out', valor: stats.monthlyDonations || 0 },
-                    ]}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                      <XAxis dataKey="mes" stroke="#666" />
-                      <YAxis stroke="#666" />
-                      <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }} formatter={(value) => `R$ ${value.toLocaleString('pt-BR')}`} />
-                      <Bar dataKey="valor" fill="#10b981" radius={[8, 8, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              {/* Listas Rápidas */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Próximos Eventos */}
-                <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-                  <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                    <Calendar className="text-purple-600" size={20} />
-                    Próximos Eventos
-                  </h3>
-                  <div className="space-y-3">
-                    {events.filter(e => new Date(e.date) >= new Date()).slice(0, 3).map(event => (
-                      <div key={event.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-purple-50 transition-colors">
-                        <div>
-                          <p className="font-semibold text-gray-800">{event.title}</p>
-                          <p className="text-sm text-gray-600">{event.date} às {event.time}</p>
-                        </div>
-                        <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm font-medium">
-                          {event.attendees} pessoas
-                        </span>
-                      </div>
-                    ))}
-                    {events.filter(e => new Date(e.date) >= new Date()).length === 0 && (
-                      <p className="text-gray-500 text-center py-4">Nenhum evento agendado</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Cantinas Recentes */}
-                <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-                  <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                    <ShoppingCart className="text-orange-600" size={20} />
-                    Cantinas Recentes
-                  </h3>
-                  <div className="space-y-3">
-                    {canteens.slice(0, 3).map(canteen => {
-                      const sales = canteenSales.filter(s => s.canteenId === canteen.id);
-                      const revenue = sales.reduce((sum, s) => sum + s.total, 0);
-                      return (
-                        <div key={canteen.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-orange-50 transition-colors">
-                          <div>
-                            <p className="font-semibold text-gray-800">{canteen.snack}</p>
-                            <p className="text-sm text-gray-600">{canteen.cellName} - {canteen.date}</p>
-                          </div>
-                          <div className="text-right">
-                            <span className={`text-xs px-2 py-1 rounded-full ${
-                              canteen.status === 'Planejada' ? 'bg-blue-100 text-blue-700' :
-                              canteen.status === 'Em andamento' ? 'bg-yellow-100 text-yellow-700' :
-                              'bg-green-100 text-green-700'
-                            }`}>
-                              {canteen.status}
-                            </span>
-                            {revenue > 0 && (
-                              <p className="text-green-600 font-bold text-sm mt-1">R$ {revenue.toLocaleString('pt-BR')}</p>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {canteens.length === 0 && (
-                      <p className="text-gray-500 text-center py-4">Nenhuma cantina cadastrada</p>
-                    )}
-                  </div>
-                </div>
+                {filteredMembers.length === 0 && <p className="text-center text-gray-500 py-8">Nenhum membro cadastrado</p>}
               </div>
             </div>
-          )}
-          {activeTab === 'members' && (
-            <div className="space-y-6">
-              <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold">Membros</h2>
-                <button onClick={() => { setEditingItem(null); setShowMemberModal(true); }} className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 flex items-center gap-2">
-                  <Plus size={20} /> Novo Membro
-                </button>
+          </div>
+        )}
+
+        {/* CÉLULAS */}
+        {activeTab === 'cells' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold">Células</h2>
+              <button onClick={() => { setEditingItem(null); setShowCellModal(true); }} className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 flex items-center gap-2">
+                <Plus size={20} /> Nova Célula
+              </button>
+            </div>
+            <div className="grid md:grid-cols-2 gap-4">
+              {cells.map(c => (
+                <div key={c.id} className="bg-white p-6 rounded-xl shadow-lg">
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <h3 className="text-xl font-bold mb-2">{c.name}</h3>
+                      <p className="text-gray-600">Líder: {c.leader}</p>
+                      <p className="text-gray-600">{c.day} às {c.time}</p>
+                      <p className="text-gray-600">{c.address}</p>
+                      <p className="font-semibold mt-2">{c.members} participantes</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => { setEditingItem(c); setShowCellModal(true); }} className="text-blue-600 hover:bg-blue-50 p-2 rounded">
+                        <Edit size={18} />
+                      </button>
+                      <button onClick={() => handleDelete('cells', c.id, setCells, cells)} className="text-red-600 hover:bg-red-50 p-2 rounded">
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* CANTINAS */}
+        {activeTab === 'canteens' && (
+          <div className="space-y-6">
+            <div className="flex gap-2 border-b">
+              <button onClick={() => setCanteenSubTab('list')} className={`px-4 py-2 ${canteenSubTab === 'list' ? 'border-b-2 border-orange-600 text-orange-600 font-semibold' : 'text-gray-600'}`}>
+                📋 Cantinas
+              </button>
+              <button onClick={() => setCanteenSubTab('cashier')} className={`px-4 py-2 ${canteenSubTab === 'cashier' ? 'border-b-2 border-orange-600 text-orange-600 font-semibold' : 'text-gray-600'}`}>
+                💰 Caixa/PDV
+              </button>
+            </div>
+            
+            {canteenSubTab === 'list' && (
+              <div>
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold">Gestão de Cantinas</h2>
+                  <button onClick={() => { setEditingItem(null); setShowCanteenModal(true); }} className="bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 flex items-center gap-2">
+                    <Plus size={20} /> Nova Cantina
+                  </button>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                  <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-6 text-white">
+                    <p className="text-sm opacity-90 mb-2">Total de Cantinas</p>
+                    <p className="text-3xl font-bold">{canteens.length}</p>
+                  </div>
+                  <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white">
+                    <p className="text-sm opacity-90 mb-2">Lanches Vendidos</p>
+                    <p className="text-3xl font-bold">{canteenSales.reduce((sum, s) => sum + s.quantity, 0)}</p>
+                  </div>
+                  <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white">
+                    <p className="text-sm opacity-90 mb-2">Arrecadado no Mês</p>
+                    <p className="text-3xl font-bold">R$ {stats.monthlyCanteenRevenue.toLocaleString('pt-BR')}</p>
+                  </div>
+                </div>
+                
+                <div className="grid gap-4">
+                  {canteens.length === 0 ? (
+                    <div className="bg-white rounded-xl p-12 text-center shadow-lg">
+                      <ShoppingCart size={48} className="mx-auto mb-4 text-gray-400" />
+                      <p className="text-lg font-semibold text-gray-700 mb-2">Nenhuma cantina cadastrada</p>
+                      <p className="text-sm text-gray-600">Comece criando sua primeira cantina!</p>
+                    </div>
+                  ) : (
+                    canteens.map(c => {
+                      const sales = canteenSales.filter(s => s.canteenId === c.id);
+                      const totalSold = sales.reduce((sum, s) => sum + s.quantity, 0);
+                      const totalRevenue = sales.reduce((sum, s) => sum + s.total, 0);
+                      
+                      return (
+                        <div key={c.id} className="bg-white p-6 rounded-lg shadow-lg border border-gray-100">
+                          <div className="flex justify-between items-start mb-4">
+                            <div className="flex-1">
+                              <h3 className="text-xl font-bold mb-2">{c.snack}</h3>
+                              <p className="text-gray-600">{c.cellName} • {c.date}</p>
+                              <p className="text-gray-700">💵 R$ {c.price.toFixed(2)} • 📦 {c.totalQuantity} unidades</p>
+                              {sales.length > 0 && (
+                                <div className="mt-3 bg-green-50 border border-green-200 rounded-lg p-3">
+                                  <div className="flex justify-between">
+                                    <div>
+                                      <p className="text-xs text-gray-600">Vendidos</p>
+                                      <p className="text-xl font-bold text-green-700">{totalSold}</p>
+                                    </div>
+                                    <div className="text-right">
+                                      <p className="text-xs text-gray-600">Arrecadado</p>
+                                      <p className="text-xl font-bold text-green-700">R$ {totalRevenue.toLocaleString('pt-BR')}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                              c.status === 'Planejada' ? 'bg-blue-100 text-blue-700' :
+                              c.status === 'Em andamento' ? 'bg-yellow-100 text-yellow-700' :
+                              'bg-green-100 text-green-700'
+                            }`}>
+                              {c.status}
+                            </span>
+                          </div>
+                          {c.status !== 'Finalizada' && (
+                            <button
+                              onClick={() => { setSelectedCanteen(c); setCanteenSubTab('cashier'); }}
+                              className="w-full bg-orange-600 text-white py-2 rounded-lg hover:bg-orange-700 font-medium flex items-center justify-center gap-2"
+                            >
+                              <CreditCard size={18} /> Abrir Caixa
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
               </div>
-              <div className="bg-white rounded-xl p-6 shadow-lg">
-                <div className="space-y-4">
-                  {filteredMembers.map(m => (
-                    <div key={m.id} className="flex justify-between items-center p-4 border rounded-lg">
+            )}
+            
+            {canteenSubTab === 'cashier' && (
+              <div>
+                {selectedCanteen ? (
+                  <div>
+                    <div className="flex justify-between items-center mb-6">
                       <div>
-                        <p className="font-bold">{m.name}</p>
-                        <p className="text-sm text-gray-600">{m.email} • {m.phone}</p>
+                        <h2 className="text-2xl font-bold">Caixa / PDV</h2>
+                        <p className="text-gray-600">{selectedCanteen.snack} - {selectedCanteen.cellName}</p>
                       </div>
                       <div className="flex gap-2">
-                        <button 
-                          onClick={() => { setEditingItem(m); setShowMemberModal(true); }}
-                          className="text-blue-600 hover:bg-blue-50 p-2 rounded"
+                        {selectedCanteen.status !== 'Finalizada' && (
+                          <button
+                            onClick={() => handleFinishCanteen(selectedCanteen.id)}
+                            className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 flex items-center gap-2"
+                          >
+                            <Save size={20} />
+                            Finalizar Cantina
+                          </button>
+                        )}
+                        <button
+                          onClick={() => { setSelectedCanteen(null); setCanteenSubTab('list'); }}
+                          className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700"
                         >
+                          Voltar
+                        </button>
+                      </div>
+                    </div>
+                    <CashierComponent 
+                      canteen={selectedCanteen}
+                      sales={canteenSales.filter(s => s.canteenId === selectedCanteen.id)}
+                      onRegisterSale={handleRegisterSale}
+                    />
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-xl p-12 text-center shadow-lg">
+                    <ShoppingCart size={48} className="mx-auto mb-4 text-gray-400" />
+                    <p className="text-lg font-semibold text-gray-700 mb-2">Nenhuma cantina selecionada</p>
+                    <p className="text-sm text-gray-600 mb-6">Vá em "Cantinas" e clique em "Abrir Caixa"</p>
+                    <button
+                      onClick={() => setCanteenSubTab('list')}
+                      className="bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700"
+                    >
+                      Ver Cantinas
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* DOAÇÕES */}
+        {activeTab === 'donations' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold">Doações</h2>
+              <button onClick={() => { setEditingItem(null); setShowDonationModal(true); }} className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 flex items-center gap-2">
+                <Plus size={20} /> Registrar Doação
+              </button>
+            </div>
+            <div className="bg-white rounded-xl p-6 shadow-lg">
+              <div className="grid md:grid-cols-2 gap-6 mb-6">
+                <div className="bg-green-100 p-6 rounded-lg">
+                  <p className="text-sm text-gray-600 mb-2">Total Arrecadado</p>
+                  <p className="text-3xl font-bold text-green-700">R$ {donations.reduce((s,d) => s + Number(d.amount), 0).toLocaleString('pt-BR')}</p>
+                </div>
+                <div className="bg-blue-100 p-6 rounded-lg">
+                  <p className="text-sm text-gray-600 mb-2">Doações Registradas</p>
+                  <p className="text-3xl font-bold text-blue-700">{donations.length}</p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                {donations.map(d => (
+                  <div key={d.id} className="flex justify-between items-center p-4 border rounded-lg">
+                    <div>
+                      <p className="font-bold">{d.member}</p>
+                      <p className="text-sm text-gray-600">{d.type} - {d.method} - {d.date}</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <p className="text-green-600 font-bold text-lg">R$ {Number(d.amount).toFixed(2)}</p>
+                      <div className="flex gap-2">
+                        <button onClick={() => { setEditingItem(d); setShowDonationModal(true); }} className="text-blue-600 hover:bg-blue-50 p-2 rounded">
                           <Edit size={18} />
                         </button>
-                        <button onClick={() => handleDeleteMember(m.id)} className="text-red-600 hover:bg-red-50 p-2 rounded">
+                        <button onClick={() => handleDelete('donations', d.id, setDonations, donations)} className="text-red-600 hover:bg-red-50 p-2 rounded">
                           <Trash2 size={18} />
                         </button>
                       </div>
                     </div>
-                  ))}
-                  {filteredMembers.length === 0 && <p className="text-center text-gray-500 py-8">Nenhum membro cadastrado</p>}
-                </div>
-              </div>
-            </div>
-          )}
-          {activeTab === 'cells' && (
-            <div className="space-y-6">
-              <h2 className="text-2xl font-bold">Células</h2>
-              <div className="grid md:grid-cols-2 gap-4">
-                {cells.map(c => (
-                  <div key={c.id} className="bg-white p-6 rounded-xl shadow-lg">
-                    <h3 className="text-xl font-bold mb-2">{c.name}</h3>
-                    <p className="text-gray-600">Líder: {c.leader}</p>
-                    <p className="text-gray-600">{c.day} às {c.time}</p>
-                    <p className="text-gray-600">{c.address}</p>
-                    <p className="font-semibold mt-2">{c.members} participantes</p>
                   </div>
                 ))}
+                {donations.length === 0 && <p className="text-center text-gray-500 py-8">Nenhuma doação registrada</p>}
               </div>
             </div>
-          )}
-          {activeTab === 'canteens' && (
-            <div className="space-y-6">
-              <div className="flex gap-2 border-b">
-                <button onClick={() => setCanteenSubTab('list')} className={`px-4 py-2 ${canteenSubTab === 'list' ? 'border-b-2 border-orange-600 text-orange-600 font-semibold' : 'text-gray-600'}`}>
-                  📋 Cantinas
-                </button>
-                <button onClick={() => setCanteenSubTab('cashier')} className={`px-4 py-2 ${canteenSubTab === 'cashier' ? 'border-b-2 border-orange-600 text-orange-600 font-semibold' : 'text-gray-600'}`}>
-                  💰 Caixa/PDV
-                </button>
-              </div>
-              
-              {canteenSubTab === 'list' && (
-                <div>
-                  <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold">Gestão de Cantinas</h2>
-                    <button onClick={() => { setEditingItem(null); setShowCanteenModal(true); }} className="bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 flex items-center gap-2">
-                      <Plus size={20} /> Nova Cantina
-                    </button>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-6 text-white">
-                      <p className="text-sm opacity-90 mb-2">Total de Cantinas</p>
-                      <p className="text-3xl font-bold">{canteens.length}</p>
-                    </div>
-                    <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white">
-                      <p className="text-sm opacity-90 mb-2">Lanches Vendidos</p>
-                      <p className="text-3xl font-bold">{canteenSales.reduce((sum, s) => sum + s.quantity, 0)}</p>
-                    </div>
-                    <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white">
-                      <p className="text-sm opacity-90 mb-2">Total Arrecadado</p>
-                      <p className="text-3xl font-bold">R$ {canteenSales.reduce((sum, s) => sum + s.total, 0).toLocaleString('pt-BR')}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="grid gap-4">
-                    {canteens.length === 0 ? (
-                      <div className="bg-white rounded-xl p-12 text-center shadow-lg">
-                        <ShoppingCart size={48} className="mx-auto mb-4 text-gray-400" />
-                        <p className="text-lg font-semibold text-gray-700 mb-2">Nenhuma cantina cadastrada</p>
-                        <p className="text-sm text-gray-600">Comece criando sua primeira cantina!</p>
-                      </div>
-                    ) : (
-                      canteens.sort((a, b) => new Date(b.date) - new Date(a.date)).map(c => {
-                        const sales = canteenSales.filter(s => s.canteenId === c.id);
-                        const totalSold = sales.reduce((sum, s) => sum + s.quantity, 0);
-                        const totalRevenue = sales.reduce((sum, s) => sum + s.total, 0);
-                        
-                        return (
-                          <div key={c.id} className="bg-white p-6 rounded-lg shadow-lg border border-gray-100">
-                            <div className="flex justify-between items-start mb-4">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-3 mb-2">
-                                  <ShoppingCart className="text-orange-600" size={24} />
-                                  <div>
-                                    <h3 className="text-xl font-bold">{c.snack}</h3>
-                                    <p className="text-sm text-gray-600">{c.cellName}</p>
-                                  </div>
-                                </div>
-                                <div className="space-y-1 text-sm text-gray-700">
-                                  <p>📅 {c.date}</p>
-                                  <p>💵 R$ {c.price.toFixed(2)} por unidade</p>
-                                  <p>📦 Quantidade: {c.totalQuantity}</p>
-                                </div>
-                                {sales.length > 0 && (
-                                  <div className="mt-3 bg-green-50 border border-green-200 rounded-lg p-3">
-                                    <div className="flex justify-between">
-                                      <div>
-                                        <p className="text-xs text-gray-600">Vendidos</p>
-                                        <p className="text-xl font-bold text-green-700">{totalSold}</p>
-                                      </div>
-                                      <div className="text-right">
-                                        <p className="text-xs text-gray-600">Arrecadado</p>
-                                        <p className="text-xl font-bold text-green-700">R$ {totalRevenue.toLocaleString('pt-BR')}</p>
-                                      </div>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                                c.status === 'Planejada' ? 'bg-blue-100 text-blue-700' :
-                                c.status === 'Em andamento' ? 'bg-yellow-100 text-yellow-700' :
-                                'bg-green-100 text-green-700'
-                              }`}>
-                                {c.status}
-                              </span>
-                            </div>
-                            <div className="flex gap-2">
-                              {c.status !== 'Finalizada' && (
-                                <button
-                                  onClick={() => { setSelectedCanteen(c); setCanteenSubTab('cashier'); }}
-                                  className="flex-1 bg-orange-600 text-white py-2 rounded-lg hover:bg-orange-700 font-medium flex items-center justify-center gap-2"
-                                >
-                                  <CreditCard size={18} /> Abrir Caixa
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-              )}
-              
-              {canteenSubTab === 'cashier' && (
-                <div>
-                  {selectedCanteen ? (
+          </div>
+        )}
+
+        {/* EVENTOS */}
+        {activeTab === 'events' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold">Eventos</h2>
+              <button onClick={() => { setEditingItem(null); setShowEventModal(true); }} className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 flex items-center gap-2">
+                <Plus size={20} /> Criar Evento
+              </button>
+            </div>
+            <div className="grid md:grid-cols-2 gap-4">
+              {events.map(e => (
+                <div key={e.id} className="bg-white p-6 rounded-xl shadow-lg">
+                  <div className="flex justify-between items-start mb-3">
                     <div>
-                      <div className="flex justify-between items-center mb-6">
-                        <div>
-                          <h2 className="text-2xl font-bold">Caixa / PDV</h2>
-                          <p className="text-gray-600">{selectedCanteen.snack} - {selectedCanteen.cellName}</p>
-                        </div>
-                        <div className="flex gap-2">
-                          {selectedCanteen.status !== 'Finalizada' && (
-                            <button
-                              onClick={() => handleFinishCanteen(selectedCanteen.id)}
-                              className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 flex items-center gap-2"
-                            >
-                              <Save size={20} />
-                              Finalizar Cantina
-                            </button>
-                          )}
-                          <button
-                            onClick={() => { setSelectedCanteen(null); setCanteenSubTab('list'); }}
-                            className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700"
-                          >
-                            Voltar
-                          </button>
-                        </div>
-                      </div>
-                      <CashierComponent 
-                        canteen={selectedCanteen}
-                        sales={canteenSales.filter(s => s.canteenId === selectedCanteen.id)}
-                        onRegisterSale={handleRegisterSale}
-                      />
+                      <h3 className="text-xl font-bold mb-2">{e.title}</h3>
+                      <p className="text-gray-600">📅 {e.date} às {e.time}</p>
+                      <p className="text-gray-600">📍 {e.location}</p>
+                      <p className="font-semibold mt-2">👥 {e.attendees} participantes</p>
                     </div>
-                  ) : (
-                    <div className="bg-white rounded-xl p-12 text-center shadow-lg">
-                      <ShoppingCart size={48} className="mx-auto mb-4 text-gray-400" />
-                      <p className="text-lg font-semibold text-gray-700 mb-2">Nenhuma cantina selecionada</p>
-                      <p className="text-sm text-gray-600 mb-6">Vá em "Cantinas" e clique em "Abrir Caixa" em uma cantina</p>
-                      <button
-                        onClick={() => setCanteenSubTab('list')}
-                        className="bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700"
-                      >
-                        Ver Cantinas
+                    <div className="flex gap-2">
+                      <button onClick={() => { setEditingItem(e); setShowEventModal(true); }} className="text-blue-600 hover:bg-blue-50 p-2 rounded">
+                        <Edit size={18} />
+                      </button>
+                      <button onClick={() => handleDelete('events', e.id, setEvents, events)} className="text-red-600 hover:bg-red-50 p-2 rounded">
+                        <Trash2 size={18} />
                       </button>
                     </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-          {activeTab === 'donations' && (
-            <div className="space-y-6">
-              <h2 className="text-2xl font-bold">Doações</h2>
-              <div className="bg-white rounded-xl p-6 shadow-lg">
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="bg-green-100 p-6 rounded-lg">
-                    <p className="text-sm text-gray-600 mb-2">Total Arrecadado</p>
-                    <p className="text-3xl font-bold text-green-700">R$ {stats.totalDonations.toLocaleString('pt-BR')}</p>
-                  </div>
-                  <div className="bg-blue-100 p-6 rounded-lg">
-                    <p className="text-sm text-gray-600 mb-2">Doações Registradas</p>
-                    <p className="text-3xl font-bold text-blue-700">{donations.length}</p>
                   </div>
                 </div>
-              </div>
+              ))}
             </div>
-          )}
-          {activeTab === 'events' && (
-            <div className="space-y-6">
-              <h2 className="text-2xl font-bold">Eventos</h2>
-              <div className="grid md:grid-cols-2 gap-4">
-                {events.map(e => (
-                  <div key={e.id} className="bg-white p-6 rounded-xl shadow-lg">
-                    <h3 className="text-xl font-bold mb-2">{e.title}</h3>
-                    <p className="text-gray-600">📅 {e.date} às {e.time}</p>
-                    <p className="text-gray-600">📍 {e.location}</p>
-                    <p className="font-semibold mt-2">👥 {e.attendees} participantes</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* MODAIS */}
-      {showMemberModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full">
-            <h3 className="text-2xl font-bold mb-4">{editingItem ? 'Editar' : 'Novo'} Membro</h3>
-            <MemberForm
-              initialData={editingItem}
-              cells={cells}
-              onSave={(data) => {
-                handleSaveMember(data);
-              }}
-              onClose={() => { setShowMemberModal(false); setEditingItem(null); }}
-            />
+      {showMemberModal && <MemberModal initialData={editingItem} cells={cells} onSave={handleSaveMember} onClose={() => { setShowMemberModal(false); setEditingItem(null); }} />}
+      {showCellModal && <CellModal initialData={editingItem} onSave={handleSaveCell} onClose={() => { setShowCellModal(false); setEditingItem(null); }} />}
+      {showDonationModal && <DonationModal initialData={editingItem} onSave={handleSaveDonation} onClose={() => { setShowDonationModal(false); setEditingItem(null); }} />}
+      {showEventModal && <EventModal initialData={editingItem} onSave={handleSaveEvent} onClose={() => { setShowEventModal(false); setEditingItem(null); }} />}
+      {showCanteenModal && <CanteenModal initialData={editingItem} cells={cells} onSave={handleSaveCanteen} onClose={() => { setShowCanteenModal(false); setEditingItem(null); }} />}
+    </div>
+  );
+}
+
+// COMPONENTES DE FORMULÁRIOS
+function MemberModal({ initialData, cells, onSave, onClose }) {
+  const [formData, setFormData] = useState(initialData || { name: '', phone: '', email: '', group: 'Jovens', status: 'Ativo', cellId: '' });
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl p-6 max-w-md w-full">
+        <h3 className="text-2xl font-bold mb-4">{initialData ? 'Editar' : 'Novo'} Membro</h3>
+        <div className="space-y-4">
+          <input type="text" placeholder="Nome" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full border p-2 rounded" />
+          <input type="tel" placeholder="Telefone" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} className="w-full border p-2 rounded" />
+          <input type="email" placeholder="Email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full border p-2 rounded" />
+          <select value={formData.group} onChange={(e) => setFormData({...formData, group: e.target.value})} className="w-full border p-2 rounded">
+            <option>Jovens</option><option>Louvor</option><option>Diáconos</option><option>Crianças</option>
+          </select>
+          <select value={formData.cellId} onChange={(e) => setFormData({...formData, cellId: e.target.value})} className="w-full border p-2 rounded">
+            <option value="">Nenhuma célula</option>
+            {cells.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
+        <div className="flex gap-3 mt-6">
+          <button onClick={onClose} className="flex-1 border py-2 rounded">Cancelar</button>
+          <button onClick={() => onSave(formData)} className="flex-1 bg-purple-600 text-white py-2 rounded">Salvar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CellModal({ initialData, onSave, onClose }) {
+  const [formData, setFormData] = useState(initialData || { name: '', leader: '', address: '', day: 'Terça-feira', time: '19:30', members: 0 });
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl p-6 max-w-md w-full">
+        <h3 className="text-2xl font-bold mb-4">{initialData ? 'Editar' : 'Nova'} Célula</h3>
+        <div className="space-y-4">
+          <input type="text" placeholder="Nome" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full border p-2 rounded" />
+          <input type="text" placeholder="Líder" value={formData.leader} onChange={(e) => setFormData({...formData, leader: e.target.value})} className="w-full border p-2 rounded" />
+          <input type="text" placeholder="Endereço" value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} className="w-full border p-2 rounded" />
+          <div className="grid grid-cols-2 gap-4">
+            <select value={formData.day} onChange={(e) => setFormData({...formData, day: e.target.value})} className="w-full border p-2 rounded">
+              <option>Segunda-feira</option><option>Terça-feira</option><option>Quarta-feira</option><option>Quinta-feira</option><option>Sexta-feira</option><option>Sábado</option><option>Domingo</option>
+            </select>
+            <input type="time" value={formData.time} onChange={(e) => setFormData({...formData, time: e.target.value})} className="w-full border p-2 rounded" />
+          </div>
+          <input type="number" placeholder="Participantes" value={formData.members} onChange={(e) => setFormData({...formData, members: e.target.value})} className="w-full border p-2 rounded" />
+        </div>
+        <div className="flex gap-3 mt-6">
+          <button onClick={onClose} className="flex-1 border py-2 rounded">Cancelar</button>
+          <button onClick={() => onSave({...formData, members: parseInt(formData.members)})} className="flex-1 bg-purple-600 text-white py-2 rounded">Salvar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DonationModal({ initialData, onSave, onClose }) {
+  const [formData, setFormData] = useState(initialData || { member: '', amount: '', type: 'Dízimo', date: new Date().toISOString().split('T')[0], method: 'PIX' });
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl p-6 max-w-md w-full">
+        <h3 className="text-2xl font-bold mb-4">{initialData ? 'Editar' : 'Registrar'} Doação</h3>
+        <div className="space-y-4">
+          <input type="text" placeholder="Doador" value={formData.member} onChange={(e) => setFormData({...formData, member: e.target.value})} className="w-full border p-2 rounded" />
+          <input type="number" placeholder="Valor" value={formData.amount} onChange={(e) => setFormData({...formData, amount: e.target.value})} className="w-full border p-2 rounded" step="0.01" />
+          <select value={formData.type} onChange={(e) => setFormData({...formData, type: e.target.value})} className="w-full border p-2 rounded">
+            <option>Dízimo</option><option>Oferta</option><option>Missões</option><option>Construção</option>
+          </select>
+          <select value={formData.method} onChange={(e) => setFormData({...formData, method: e.target.value})} className="w-full border p-2 rounded">
+            <option>PIX</option><option>Dinheiro</option><option>Cartão</option>
+          </select>
+          <input type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="w-full border p-2 rounded" />
+        </div>
+        <div className="flex gap-3 mt-6">
+          <button onClick={onClose} className="flex-1 border py-2 rounded">Cancelar</button>
+          <button onClick={() => onSave({...formData, amount: parseFloat(formData.amount)})} className="flex-1 bg-green-600 text-white py-2 rounded">Salvar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EventModal({ initialData, onSave, onClose }) {
+  const [formData, setFormData] = useState(initialData || { title: '', date: new Date().toISOString().split('T')[0], time: '19:00', location: '', attendees: 0 });
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl p-6 max-w-md w-full">
+        <h3 className="text-2xl font-bold mb-4">{initialData ? 'Editar' : 'Criar'} Evento</h3>
+        <div className="space-y-4">
+          <input type="text" placeholder="Nome do Evento" value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} className="w-full border p-2 rounded" />
+          <div className="grid grid-cols-2 gap-4">
+            <input type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="w-full border p-2 rounded" />
+            <input type="time" value={formData.time} onChange={(e) => setFormData({...formData, time: e.target.value})} className="w-full border p-2 rounded" />
+          </div>
+          <input type="text" placeholder="Local" value={formData.location} onChange={(e) => setFormData({...formData, location: e.target.value})} className="w-full border p-2 rounded" />
+          <input type="number" placeholder="Participantes" value={formData.attendees} onChange={(e) => setFormData({...formData, attendees: e.target.value})} className="w-full border p-2 rounded" />
+        </div>
+        <div className="flex gap-3 mt-6">
+          <button onClick={onClose} className="flex-1 border py-2 rounded">Cancelar</button>
+          <button onClick={() => onSave({...formData, attendees: parseInt(formData.attendees)})} className="flex-1 bg-purple-600 text-white py-2 rounded">Salvar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CanteenModal({ initialData, cells, onSave, onClose }) {
+  const [formData, setFormData] = useState(initialData || { date: new Date().toISOString().split('T')[0], cellId: '', snack: '', price: '', totalQuantity: '' });
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl p-6 max-w-md w-full">
+        <h3 className="text-2xl font-bold mb-4">{initialData ? 'Editar' : 'Nova'} Cantina</h3>
+        <div className="space-y-4">
+          <input type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="w-full border p-2 rounded" />
+          <select value={formData.cellId} onChange={(e) => setFormData({...formData, cellId: e.target.value})} className="w-full border p-2 rounded">
+            <option value="">Selecione a célula</option>
+            {cells.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <input type="text" placeholder="Lanche (ex: Cachorro-quente)" value={formData.snack} onChange={(e) => setFormData({...formData, snack: e.target.value})} className="w-full border p-2 rounded" />
+          <div className="grid grid-cols-2 gap-4">
+            <input type="number" placeholder="Preço" value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} className="w-full border p-2 rounded" step="0.50" />
+            <input type="number" placeholder="Quantidade" value={formData.totalQuantity} onChange={(e) => setFormData({...formData, totalQuantity: e.target.value})} className="w-full border p-2 rounded" />
           </div>
         </div>
-      )}
-
-      {showCanteenModal && (
-        <CanteenModal
-          editingItem={editingItem}
-          cells={cells}
-          onSave={handleSaveCanteen}
-          onClose={() => { setShowCanteenModal(false); setEditingItem(null); }}
-        />
-      )}
-    </div>
-  );
-}
-
-// Formulário de Membro
-function MemberForm({ initialData, cells, onSave, onClose }) {
-  const [formData, setFormData] = useState(initialData || {
-    name: '',
-    phone: '',
-    email: '',
-    group: 'Jovens',
-    status: 'Ativo',
-    cellId: ''
-  });
-
-  return (
-    <div className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Nome Completo</label>
-        <input
-          type="text"
-          value={formData.name}
-          onChange={(e) => setFormData({...formData, name: e.target.value})}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-          placeholder="João Silva"
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
-        <input
-          type="tel"
-          value={formData.phone}
-          onChange={(e) => setFormData({...formData, phone: e.target.value})}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-          placeholder="(21) 99999-9999"
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-        <input
-          type="email"
-          value={formData.email}
-          onChange={(e) => setFormData({...formData, email: e.target.value})}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-          placeholder="joao@email.com"
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Grupo</label>
-        <select
-          value={formData.group}
-          onChange={(e) => setFormData({...formData, group: e.target.value})}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-        >
-          <option>Jovens</option>
-          <option>Louvor</option>
-          <option>Diáconos</option>
-          <option>Crianças</option>
-          <option>Intercessão</option>
-          <option>Liderança</option>
-          <option>Visitante</option>
-        </select>
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-        <select
-          value={formData.status}
-          onChange={(e) => setFormData({...formData, status: e.target.value})}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-        >
-          <option>Ativo</option>
-          <option>Inativo</option>
-          <option>Visitante</option>
-        </select>
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Célula (Opcional)</label>
-        <select
-          value={formData.cellId}
-          onChange={(e) => setFormData({...formData, cellId: e.target.value})}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-        >
-          <option value="">Nenhuma</option>
-          {cells.map(cell => (
-            <option key={cell.id} value={cell.id}>{cell.name}</option>
-          ))}
-        </select>
-      </div>
-      <div className="flex gap-3 mt-6">
-        <button onClick={onClose} className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
-          Cancelar
-        </button>
-        <button onClick={() => onSave(formData)} className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2">
-          <Save size={18} />
-          Salvar
-        </button>
+        <div className="flex gap-3 mt-6">
+          <button onClick={onClose} className="flex-1 border py-2 rounded">Cancelar</button>
+          <button onClick={() => onSave({...formData, price: parseFloat(formData.price), totalQuantity: parseInt(formData.totalQuantity)})} className="flex-1 bg-orange-600 text-white py-2 rounded">Salvar</button>
+        </div>
       </div>
     </div>
   );
 }
 
-// Componente auxiliar para o caixa
 function CashierComponent({ canteen, sales, onRegisterSale }) {
   const [quantity, setQuantity] = useState(1);
   const [payment, setPayment] = useState('Dinheiro');
@@ -791,60 +797,60 @@ function CashierComponent({ canteen, sales, onRegisterSale }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-4">
-        <div className="bg-blue-100 p-4 rounded">
-          <p className="text-sm">Vendidos</p>
-          <p className="text-2xl font-bold">{totalSold}</p>
-        </div>
-        <div className="bg-green-100 p-4 rounded">
-          <p className="text-sm">Arrecadado</p>
-          <p className="text-2xl font-bold">R$ {totalRevenue}</p>
-        </div>
-        <div className="bg-purple-100 p-4 rounded">
-          <p className="text-sm">Restante</p>
-          <p className="text-2xl font-bold">{canteen.totalQuantity - totalSold}</p>
-        </div>
+      <div className="grid grid-cols-4 gap-4">
+        {[
+          { label: 'Preço', value: `R$ ${canteen.price.toFixed(2)}`, color: 'orange' },
+          { label: 'Vendidos', value: `${totalSold}/${canteen.totalQuantity}`, color: 'blue' },
+          { label: 'Arrecadado', value: `R$ ${totalRevenue.toFixed(2)}`, color: 'green' },
+          { label: 'Restante', value: canteen.totalQuantity - totalSold, color: 'purple' }
+        ].map((stat, i) => (
+          <div key={i} className={`bg-${stat.color}-100 p-4 rounded-lg`}>
+            <p className="text-sm text-gray-600">{stat.label}</p>
+            <p className="text-2xl font-bold">{stat.value}</p>
+          </div>
+        ))}
       </div>
       
-      <div className="border-2 border-orange-500 p-6 rounded-xl">
-        <h4 className="font-bold mb-4">Registrar Venda</h4>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block mb-2">Quantidade</label>
-            <input
-              type="number"
-              min="1"
-              value={quantity}
-              onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
-              className="w-full border p-2 rounded text-center text-2xl font-bold"
-            />
+      {canteen.status !== 'Finalizada' && (
+        <div className="border-2 border-orange-500 p-6 rounded-xl">
+          <h4 className="font-bold mb-4">Registrar Venda</h4>
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block mb-2 text-sm">Quantidade</label>
+              <input
+                type="number"
+                min="1"
+                value={quantity}
+                onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+                className="w-full border p-2 rounded text-center text-2xl font-bold"
+              />
+            </div>
+            <div>
+              <label className="block mb-2 text-sm">Pagamento</label>
+              <select value={payment} onChange={(e) => setPayment(e.target.value)} className="w-full border p-2 rounded">
+                <option>Dinheiro</option>
+                <option>Cartão</option>
+                <option>PIX</option>
+              </select>
+            </div>
+            <div>
+              <label className="block mb-2 text-sm">Total</label>
+              <div className="w-full bg-green-100 p-2 rounded text-center text-2xl font-bold text-green-700">
+                R$ {(quantity * canteen.price).toFixed(2)}
+              </div>
+            </div>
           </div>
-          <div>
-            <label className="block mb-2">Pagamento</label>
-            <select value={payment} onChange={(e) => setPayment(e.target.value)} className="w-full border p-2 rounded">
-              <option>Dinheiro</option>
-              <option>Cartão</option>
-              <option>PIX</option>
-            </select>
-          </div>
+          <button
+            onClick={async () => {
+              const success = await onRegisterSale(canteen.id, quantity, payment);
+              if (success) { setQuantity(1); alert('Venda registrada!'); }
+            }}
+            className="w-full mt-4 bg-orange-600 text-white py-4 rounded-lg text-xl font-bold hover:bg-orange-700"
+          >
+            <ShoppingCart className="inline mr-2" size={24} /> Registrar Venda
+          </button>
         </div>
-        <div className="mt-4 bg-green-100 p-4 rounded text-center">
-          <p className="text-sm">Total</p>
-          <p className="text-3xl font-bold text-green-700">R$ {(quantity * canteen.price).toFixed(2)}</p>
-        </div>
-        <button
-          onClick={async () => {
-            const success = await onRegisterSale(canteen.id, quantity, payment);
-            if (success) {
-              setQuantity(1);
-              alert('Venda registrada!');
-            }
-          }}
-          className="w-full mt-4 bg-orange-600 text-white py-4 rounded-lg text-xl font-bold hover:bg-orange-700"
-        >
-          Registrar Venda
-        </button>
-      </div>
+      )}
 
       <div className="bg-white border rounded-xl p-4">
         <h4 className="font-bold mb-3">Últimas Vendas</h4>
@@ -860,87 +866,6 @@ function CashierComponent({ canteen, sales, onRegisterSale }) {
             ))}
           </div>
         )}
-      </div>
-    </div>
-  );
-}
-
-// Modal de Cantina
-function CanteenModal({ editingItem, cells, onSave, onClose }) {
-  const [formData, setFormData] = useState(editingItem || {
-    date: new Date().toISOString().split('T')[0],
-    cellId: '',
-    snack: '',
-    price: '',
-    totalQuantity: ''
-  });
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl p-6 max-w-md w-full">
-        <h3 className="text-2xl font-bold mb-4">{editingItem ? 'Editar' : 'Nova'} Cantina</h3>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Data</label>
-            <input
-              type="date"
-              value={formData.date}
-              onChange={(e) => setFormData({...formData, date: e.target.value})}
-              className="w-full border p-2 rounded"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Célula</label>
-            <select
-              value={formData.cellId}
-              onChange={(e) => setFormData({...formData, cellId: e.target.value})}
-              className="w-full border p-2 rounded"
-            >
-              <option value="">Selecione</option>
-              {cells.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Lanche</label>
-            <input
-              type="text"
-              value={formData.snack}
-              onChange={(e) => setFormData({...formData, snack: e.target.value})}
-              className="w-full border p-2 rounded"
-              placeholder="Cachorro-quente..."
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Preço (R$)</label>
-              <input
-                type="number"
-                value={formData.price}
-                onChange={(e) => setFormData({...formData, price: e.target.value})}
-                className="w-full border p-2 rounded"
-                step="0.50"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Quantidade</label>
-              <input
-                type="number"
-                value={formData.totalQuantity}
-                onChange={(e) => setFormData({...formData, totalQuantity: e.target.value})}
-                className="w-full border p-2 rounded"
-              />
-            </div>
-          </div>
-        </div>
-        <div className="flex gap-3 mt-6">
-          <button onClick={onClose} className="flex-1 border py-2 rounded hover:bg-gray-50">Cancelar</button>
-          <button
-            onClick={() => onSave({...formData, price: parseFloat(formData.price), totalQuantity: parseInt(formData.totalQuantity)})}
-            className="flex-1 bg-orange-600 text-white py-2 rounded hover:bg-orange-700"
-          >
-            Salvar
-          </button>
-        </div>
       </div>
     </div>
   );
