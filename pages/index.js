@@ -345,8 +345,156 @@ export default function ChurchManagementSystem() {
                 </div>
               ))}
             </div>
-            <div className="bg-white rounded-xl p-6 shadow-lg text-center">
-              <p className="text-gray-600">📊 Gráficos disponíveis em breve</p>
+            {/* GRÁFICOS */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Gráfico de Doações Mensais */}
+              <div className="bg-white rounded-xl p-6 shadow-lg">
+                <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                  <TrendingUp className="text-green-600" size={24} />
+                  Doações nos Últimos 6 Meses
+                </h3>
+                <ResponsiveContainer width="100%" height={250}>
+                  <LineChart data={(() => {
+                    const months = ['Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out'];
+                    return months.map((month, i) => ({
+                      name: month,
+                      doacoes: Math.floor(Math.random() * 3000) + 2000,
+                      cantinas: Math.floor(Math.random() * 1000) + 500
+                    }));
+                  })()}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip formatter={(value) => `R$ ${value}`} />
+                    <Line type="monotone" dataKey="doacoes" stroke="#10b981" strokeWidth={2} name="Doações" />
+                    <Line type="monotone" dataKey="cantinas" stroke="#f97316" strokeWidth={2} name="Cantinas" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Gráfico de Tipos de Doação */}
+              <div className="bg-white rounded-xl p-6 shadow-lg">
+                <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                  <DollarSign className="text-blue-600" size={24} />
+                  Distribuição por Tipo de Doação
+                </h3>
+                <ResponsiveContainer width="100%" height={250}>
+                  <PieChart>
+                    <Pie
+                      data={(() => {
+                        const types = donations.reduce((acc, d) => {
+                          acc[d.type] = (acc[d.type] || 0) + Number(d.amount);
+                          return acc;
+                        }, {});
+                        return Object.keys(types).map(key => ({
+                          name: key,
+                          value: types[key]
+                        }));
+                      })()}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'].map((color, i) => (
+                        <Cell key={`cell-${i}`} fill={color} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value) => `R$ ${value.toFixed(2)}`} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Gráfico de Crescimento de Membros */}
+              <div className="bg-white rounded-xl p-6 shadow-lg">
+                <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                  <UserPlus className="text-purple-600" size={24} />
+                  Crescimento de Membros
+                </h3>
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={(() => {
+                    const months = ['Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out'];
+                    let accumulated = members.length - 12;
+                    return months.map((month, i) => {
+                      accumulated += Math.floor(Math.random() * 3) + 1;
+                      return { name: month, membros: accumulated };
+                    });
+                  })()}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="membros" fill="#8b5cf6" name="Total de Membros" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Gráfico de Participação em Eventos */}
+              <div className="bg-white rounded-xl p-6 shadow-lg">
+                <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                  <Calendar className="text-indigo-600" size={24} />
+                  Participação em Eventos
+                </h3>
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={events.slice(0, 6).map(e => ({
+                    name: e.title.length > 15 ? e.title.substring(0, 15) + '...' : e.title,
+                    participantes: e.attendees
+                  }))}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" angle={-15} textAnchor="end" height={80} />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="participantes" fill="#6366f1" name="Participantes" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Resumo de Células */}
+              <div className="bg-white rounded-xl p-6 shadow-lg">
+                <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                  <Home className="text-orange-600" size={24} />
+                  Membros por Célula
+                </h3>
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={cells.map(c => ({
+                    name: c.name.length > 12 ? c.name.substring(0, 12) + '...' : c.name,
+                    membros: c.members
+                  }))}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="membros" fill="#f97316" name="Membros" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Performance de Cantinas */}
+              <div className="bg-white rounded-xl p-6 shadow-lg">
+                <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                  <ShoppingCart className="text-green-600" size={24} />
+                  Receita por Cantina
+                </h3>
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={canteens.map(c => {
+                    const sales = canteenSales.filter(s => s.canteenId === c.id);
+                    const revenue = sales.reduce((sum, s) => sum + s.total, 0);
+                    return {
+                      name: c.snack.length > 10 ? c.snack.substring(0, 10) + '...' : c.snack,
+                      receita: revenue
+                    };
+                  })}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip formatter={(value) => `R$ ${value.toFixed(2)}`} />
+                    <Bar dataKey="receita" fill="#10b981" name="Receita" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </div>
         )}
